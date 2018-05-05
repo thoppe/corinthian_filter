@@ -4,7 +4,7 @@ import joblib
 from tqdm import tqdm
 
 start_frame = 0
-end_frame  = 800
+end_frame  = 10**20
 name = sys.argv[1]
 
 save_dest = "data/{}/landmarks".format(name)
