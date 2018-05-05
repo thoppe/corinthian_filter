@@ -3,7 +3,7 @@ import glob, os, json, sys
 import joblib
 from tqdm import tqdm
 
-start_frame = 200
+start_frame = 0
 end_frame  = 800
 name = sys.argv[1]
 
@@ -12,7 +12,6 @@ os.system('mkdir -p {}'.format(save_dest))
 
 JPG = sorted(glob.glob("source/frames/{}/*".format(name)))
 JPG = JPG[start_frame:end_frame]
-
 
 def locate_landmarks(f_image):
 
