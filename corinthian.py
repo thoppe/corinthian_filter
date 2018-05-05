@@ -11,7 +11,7 @@ import scipy.ndimage.morphology as morph
 from skimage.restoration import inpaint
 
 FLAG_DEBUG = [False, True,][0]
-FLAG_SHOW = [False, True,][0]
+FLAG_SHOW = [False, True,][1]
 
 URI = sys.argv[1]
 scale_product = 1.00
@@ -112,6 +112,16 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
 
     return export_mask
 
+def blend_images_over_mask(img0, img1, mask, w=1.0):
+
+    # Get the two subsets, cast as floats
+    f0 = img0[mask].astype(float)
+    f1 = img1[mask].astype(float)
+
+    f10 = (1.0*f0+w*f1)/(1+w)
+
+    return f10.astype(np.uint8)
+
 
 def remove_eyes(f, f_out=None):
     L = read_landmarks(f)
@@ -145,8 +155,14 @@ def remove_eyes(f, f_out=None):
 
     whole_face_pts = np.vstack([L[k] for k in L])
     mouth_pts = np.vstack([L[k] for k in mouth_keys])
-    mouth_to_face_ratio = (bounding_box_area(mouth_pts) /
-                           bounding_box_area(whole_face_pts))
+
+    nose_pts = np.vstack([L[k] for k in ['nose_tip','nose_bridge']])
+    nose_mask = get_mask(nose_pts, height, width)
+    face_mask = get_mask(whole_face_pts, height, width)
+    
+    mouth_to_face_ratio = (
+        bounding_box_area(mouth_pts) /
+        bounding_box_area(whole_face_pts) )
 
     scale_factor = scale_product*mouth_to_face_ratio
 
@@ -155,26 +171,31 @@ def remove_eyes(f, f_out=None):
     
     E0 = copy_mask(img, left_eye, mouth, scale_factor)
     E1 = copy_mask(img, right_eye, mouth, scale_factor)
-
     
     # Inpaint around the eyes one out and one in from the outer edge
-    d = morph.binary_dilation(E0,iterations=1) & (~E0)
+    d = morph.binary_dilation(E0,iterations=1) & (~E0) #& (~nose_mask)
     d = morph.binary_dilation(d,iterations=1)
     img = inpaint.inpaint_biharmonic(img, d, multichannel=True)
     img = np.clip((img*255).astype(np.uint8), 0, 255)
 
-    d = morph.binary_dilation(E1,iterations=1) & (~E1)
+    d = morph.binary_dilation(E1,iterations=1) & (~E1) #& (~nose_mask)
     d = morph.binary_dilation(d,iterations=1)
     img = inpaint.inpaint_biharmonic(img, d, multichannel=True)
     img = np.clip((img*255).astype(np.uint8), 0, 255)
 
-    if f_out is not None:
-        print "Saved", f_out
-        cv2.imwrite(f_out, img)
+    # Draw back over the nose part a bit
+    #img[nose_mask] = org_img[nose_mask]
+    #cfilter = np.ones((7,7))
+    #nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
+    #img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
 
     if FLAG_DEBUG or FLAG_SHOW:
         show(img)
         exit()
+
+    if f_out is not None:
+        print "Saved", f_out
+        cv2.imwrite(f_out, img)
     
     return img
 
@@ -184,8 +205,8 @@ save_dest = "data/{}/corinthian/".format(URI)
 os.system('mkdir -p {}'.format(save_dest))
 
 ##remove_eyes('source_movies/images/000205.jpg')
-#remove_eyes('data/cVW6jBbD5Q8/landmarks/000201.jpg.json')
-#exit()
+remove_eyes('data/cVW6jBbD5Q8/landmarks/000552.jpg.json')
+exit()
 
 ITR = landmark_files
 

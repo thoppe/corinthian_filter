@@ -10,7 +10,7 @@ Download a video, convert it into frames, find landmarks
 
 Begin the nightmare
 
-    python corinthian.py cVW6jBbD5Q8
+    python corinthian.py cVW6jBbD5Q8 2.0
 
 ![Obama Corinthinan Filter](demo_image_obama.jpg)
 
