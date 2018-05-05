@@ -1,7 +1,9 @@
 from __future__ import division
-import glob, os, json
+import glob, os, json, sys
 import numpy as np
 import cv2
+import joblib
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 from skimage.restoration import inpaint
 from scipy.ndimage.filters import convolve
@@ -9,11 +11,12 @@ import scipy.ndimage.morphology as morph
 from skimage.restoration import inpaint
 
 FLAG_DEBUG = [False, True,][0]
-FLAG_SHOW = [False, True,][1]
+FLAG_SHOW = [False, True,][0]
 
-def read_landmarks(f):
-    save_dest = "data/landmarks/"
-    f_json = os.path.join(save_dest, os.path.basename(f)) + '.json'
+URI = sys.argv[1]
+scale_product = 1.00
+
+def read_landmarks(f_json):
     assert( os.path.exists(f_json) )
 
     with open(f_json, 'r') as FIN:
@@ -111,11 +114,15 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
 
 
 def remove_eyes(f, f_out=None):
-    try:
-        L = read_landmarks(f)
-    except:
-        return False
-    img = cv2.imread(f)
+    L = read_landmarks(f)
+
+    load_dest = "source/frames/{}".format(URI)
+    f_img = ''.join(
+        os.path.join(load_dest, os.path.basename(f)).split('.json'))
+
+    assert(os.path.exists(f_img))
+    img = cv2.imread(f_img)
+    
 
     # Convert JPG into PNG with alpha channel
     bc, gc, rc = cv2.split(img)
@@ -138,9 +145,10 @@ def remove_eyes(f, f_out=None):
 
     whole_face_pts = np.vstack([L[k] for k in L])
     mouth_pts = np.vstack([L[k] for k in mouth_keys])
-    mouth_to_face_ratio = bounding_box_area(mouth_pts) / bounding_box_area(whole_face_pts)
+    mouth_to_face_ratio = (bounding_box_area(mouth_pts) /
+                           bounding_box_area(whole_face_pts))
 
-    scale_factor = 2.5*mouth_to_face_ratio
+    scale_factor = scale_product*mouth_to_face_ratio
 
     left_eye = get_mask(L['left_eye'], height, width)
     right_eye = get_mask(L['right_eye'], height, width)
@@ -149,7 +157,7 @@ def remove_eyes(f, f_out=None):
     E1 = copy_mask(img, right_eye, mouth, scale_factor)
 
     
-    # Inpaint around the eyes 2 out and one in from the outer edge
+    # Inpaint around the eyes one out and one in from the outer edge
     d = morph.binary_dilation(E0,iterations=1) & (~E0)
     d = morph.binary_dilation(d,iterations=1)
     img = inpaint.inpaint_biharmonic(img, d, multichannel=True)
@@ -159,7 +167,6 @@ def remove_eyes(f, f_out=None):
     d = morph.binary_dilation(d,iterations=1)
     img = inpaint.inpaint_biharmonic(img, d, multichannel=True)
     img = np.clip((img*255).astype(np.uint8), 0, 255)
-    
 
     if f_out is not None:
         print "Saved", f_out
@@ -172,22 +179,18 @@ def remove_eyes(f, f_out=None):
     return img
 
 
-JPG = sorted(glob.glob("source_movies/images/*"))[185:500]
-save_dest = "data/eye_teeth"
+landmark_files = sorted(glob.glob("data/{}/landmarks/*".format(URI)))
+save_dest = "data/{}/corinthian/".format(URI)
 os.system('mkdir -p {}'.format(save_dest))
 
-remove_eyes('source_movies/images/000205.jpg')
-#remove_eyes('source_movies/images/000328.jpg')
-exit()
+##remove_eyes('source_movies/images/000205.jpg')
+#remove_eyes('data/cVW6jBbD5Q8/landmarks/000201.jpg.json')
+#exit()
 
-import joblib
-from tqdm import tqdm
-ITR = JPG
+ITR = landmark_files
 
-F_OUT = [os.path.join(save_dest, os.path.basename(f)) for f in JPG]
-
-#for f in JPG:
-#    img = remove_eyes(f, f_out)
+F_OUT = [''.join(os.path.join(save_dest, os.path.basename(f)).split('.json'))
+         for f in ITR]
 
 THREADS = -1
 
