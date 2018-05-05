@@ -1,8 +1,17 @@
 import face_recognition
-import glob, os, json
+import glob, os, json, sys
+import joblib
+from tqdm import tqdm
 
-save_dest = "data/landmarks"
+start_frame = 200
+end_frame  = 800
+name = sys.argv[1]
+
+save_dest = "data/{}/landmarks".format(name)
 os.system('mkdir -p {}'.format(save_dest))
+
+JPG = sorted(glob.glob("source/frames/{}/*".format(name)))
+JPG = JPG[start_frame:end_frame]
 
 
 def locate_landmarks(f_image):
@@ -30,12 +39,7 @@ def locate_landmarks(f_image):
     print "Completed", f_image
 
 
-JPG = sorted(glob.glob("source_movies/images/*"))[:]
-
-import joblib
-from tqdm import tqdm
 func = joblib.delayed(locate_landmarks)
-
 ITR = tqdm(JPG)
 
 with joblib.Parallel(-1, batch_size=2) as MP:
