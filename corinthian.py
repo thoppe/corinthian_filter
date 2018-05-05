@@ -10,7 +10,7 @@ from scipy.ndimage.filters import convolve
 import scipy.ndimage.morphology as morph
 from skimage.restoration import inpaint
 
-FLAG_DEBUG = [False, True,][0]
+FLAG_DEBUG = [False, True,][1]
 FLAG_SHOW = [False, True,][1]
 
 URI = sys.argv[1]
@@ -77,6 +77,7 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
 
     if FLAG_DEBUG:
         img[mask0] = [250,250,250,0]
+        img[mask1] = [0,150,150,100]
         img[CM0[0], CM0[1]] = [250,0,50,0]
 
     # Extract a fresh copy of the source mask
@@ -205,8 +206,8 @@ save_dest = "data/{}/corinthian/".format(URI)
 os.system('mkdir -p {}'.format(save_dest))
 
 ##remove_eyes('source_movies/images/000205.jpg')
-remove_eyes('data/cVW6jBbD5Q8/landmarks/000552.jpg.json')
-exit()
+#remove_eyes('data/cVW6jBbD5Q8/landmarks/000484.jpg.json')
+#exit()
 
 ITR = landmark_files
 
