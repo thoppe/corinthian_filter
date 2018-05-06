@@ -220,19 +220,18 @@ def remove_eyes(f_json, f_img, f_out=None):
     for k,faceL in enumerate(read_landmarks(f_json)):
         print "Starting face {}, {}".format(k, f_out)
         remove_eyes_from_landmarks(faceL, f_out, f_out)
+        
 
-'''
-def process_image(f_img):
+def process_image(f_img, f_out=None):
     # Useful for debuging (start directly from an image)
         
     f_json = f_image_to_landmark_file(f_img)
     if not os.path.exists(f_json):
         print "Building landmarks for", f_img
         locate_landmarks(f_img, save_data=True, model='hog')
-    
-    #f_json = 'data/KZrMRvvLg58/landmarks/002090.jpg.json'
-    remove_eyes(f_json, f_img)
 
+    remove_eyes(f_json, f_img, f_out)
+'''
 process_image("source/frames/KZrMRvvLg58/002090.jpg")
 remove_eyes('data/o3ujLxQP8hE/landmarks/000577.jpg.json')
 '''
@@ -260,9 +259,15 @@ if __name__ == "__main__":
         THREADS = -1
 
     with joblib.Parallel(THREADS,batch_size=2) as MP:
+
+        func = joblib.delayed(process_image)
+        MP(func(f_img, f_out) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
+
+        '''
         func = joblib.delayed(remove_eyes)
         MP(func(
             f_image_to_landmark_file(f_img),
             f_img,            
             f_out,
         ) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
+        '''
