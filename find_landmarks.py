@@ -1,7 +1,7 @@
 import face_recognition
 import os, json
 
-def locate_landmarks(f_image, save_data=True, model='hog'):
+def locate_landmarks(f_image, save_data=False, model='hog'):
 
     if save_data:
         f_json = os.path.join(save_dest, os.path.basename(f_image)) + '.json'
@@ -32,6 +32,9 @@ def locate_landmarks(f_image, save_data=True, model='hog'):
     return landmarks
 
 
+print locate_landmarks("source/frames/o3ujLxQP8hE/000584.jpg",False)
+exit()
+
 if __name__ == "__main__":
     from tqdm import tqdm
     import glob
@@ -51,5 +54,5 @@ if __name__ == "__main__":
     ITR = tqdm(JPG)
 
     with joblib.Parallel(-1, batch_size=2) as MP:
-        MP(func(x) for x in ITR)
+        MP(func(x,save_data=True) for x in ITR)
 

@@ -10,13 +10,14 @@ from scipy.ndimage.filters import convolve
 import scipy.ndimage.morphology as morph
 from skimage.restoration import inpaint
 
-FLAG_DEBUG = [False, True,][1]
-FLAG_SHOW = [False, True,][1]
+FLAG_DEBUG = [False, True,][0]
+FLAG_SHOW = [False, True,][0]
 
 URI = sys.argv[1]
-scale_product = 1.00
+scale_product = 1.10
 
 def read_landmarks(f_json):
+    
     assert( os.path.exists(f_json) )
 
     with open(f_json, 'r') as FIN:
@@ -133,7 +134,6 @@ def remove_eyes(f, f_out=None):
 
     assert(os.path.exists(f_img))
     img = cv2.imread(f_img)
-    
 
     # Convert JPG into PNG with alpha channel
     bc, gc, rc = cv2.split(img)
@@ -161,9 +161,13 @@ def remove_eyes(f, f_out=None):
     nose_mask = get_mask(nose_pts, height, width)
     face_mask = get_mask(whole_face_pts, height, width)
     
-    mouth_to_face_ratio = (
+    mouth_to_face_ratio = np.sqrt(
         bounding_box_area(mouth_pts) /
         bounding_box_area(whole_face_pts) )
+
+    mouth_to_face_ratio = max(mouth_to_face_ratio, 0.5)
+
+    print mouth_to_face_ratio
 
     scale_factor = scale_product*mouth_to_face_ratio
 
@@ -192,33 +196,41 @@ def remove_eyes(f, f_out=None):
 
     if FLAG_DEBUG or FLAG_SHOW:
         show(img)
-        exit()
+        #exit()
 
-    if f_out is not None:
+    elif f_out is not None:
         print "Saved", f_out
         cv2.imwrite(f_out, img)
     
     return img
 
 
-landmark_files = sorted(glob.glob("data/{}/landmarks/*".format(URI)))
-save_dest = "data/{}/corinthian/".format(URI)
-os.system('mkdir -p {}'.format(save_dest))
-
 ##remove_eyes('source_movies/images/000205.jpg')
-#remove_eyes('data/cVW6jBbD5Q8/landmarks/000484.jpg.json')
+#remove_eyes('data/o3ujLxQP8hE/landmarks/000622.jpg.json')
+#remove_eyes('data/o3ujLxQP8hE/landmarks/000545.jpg.json')
+#remove_eyes('data/o3ujLxQP8hE/landmarks/000577.jpg.json')
 #exit()
 
-ITR = landmark_files
 
-F_OUT = [''.join(os.path.join(save_dest, os.path.basename(f)).split('.json'))
-         for f in ITR]
+if __name__ == "__main__":
 
-THREADS = -1
+    landmark_files = sorted(glob.glob("data/{}/landmarks/*".format(URI)))
+    save_dest = "data/{}/corinthian/".format(URI)
+    os.system('mkdir -p {}'.format(save_dest))
 
-if FLAG_DEBUG or FLAG_SHOW:
-    THREADS = 1
 
-with joblib.Parallel(THREADS,batch_size=2) as MP:
-    func = joblib.delayed(remove_eyes)
-    MP(func(f,f_out) for f,f_out in tqdm(zip(ITR, F_OUT)))
+
+    ITR = landmark_files
+
+    F_OUT = [''.join(os.path.join(save_dest, os.path.basename(f)).split('.json'))
+             for f in ITR]
+
+    if FLAG_DEBUG or FLAG_SHOW:
+        THREADS = 1
+    else:
+        THREADS = -1
+
+
+    with joblib.Parallel(THREADS,batch_size=2) as MP:
+        func = joblib.delayed(remove_eyes)
+        MP(func(f,f_out) for f,f_out in tqdm(zip(ITR, F_OUT)))
