@@ -16,6 +16,7 @@ Begin the nightmare
 ![Gaimen Corinthinan Filter](docs/demo_image_gaimen.jpg)
 ![Woody Paige Corinthinan Filter](docs/demo_image_woody.jpg)
 ![Trump Corinthinan Filter](docs/demo_image_trump.jpg)
+![Charlize Corinthinan Filter](docs/demo_image_charlize.jpg)
 
 Developer notes:
 
