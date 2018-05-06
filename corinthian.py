@@ -9,11 +9,13 @@ from skimage.restoration import inpaint
 from scipy.ndimage.filters import convolve
 import scipy.ndimage.morphology as morph
 from skimage.restoration import inpaint
+from shutil import copyfile
+
+from find_landmarks import f_image_to_landmark_file, locate_landmarks
 
 FLAG_DEBUG = [False, True,][0]
 FLAG_SHOW = [False, True,][0]
 
-URI = sys.argv[1]
 scale_product = 1.10
 
 def read_landmarks(f_json):
@@ -23,9 +25,10 @@ def read_landmarks(f_json):
     with open(f_json, 'r') as FIN:
         js = json.loads(FIN.read())
 
-    for key in js:
-        js[key] = np.array(js[key])
-        
+    for face in js:
+        for key in face:
+            face[key] = np.array(face[key])
+            
     return js
 
 def get_mask(pts, height, width):
@@ -125,12 +128,11 @@ def blend_images_over_mask(img0, img1, mask, w=1.0):
     return f10.astype(np.uint8)
 
 
-def remove_eyes(f, f_out=None):
-    L = read_landmarks(f)
-
-    load_dest = "source/frames/{}".format(URI)
-    f_img = ''.join(
-        os.path.join(load_dest, os.path.basename(f)).split('.json'))
+def remove_eyes_from_landmarks(L, f_img, f_out=None):
+    #load_dest = "source/frames/{}".format(URI)
+    #    f_img = f_landmark_to_image_file(f)
+    #''.join(
+    #    os.path.join(load_dest, os.path.basename(f)).split('.json'))
 
     assert(os.path.exists(f_img))
     img = cv2.imread(f_img)
@@ -165,9 +167,8 @@ def remove_eyes(f, f_out=None):
         bounding_box_area(mouth_pts) /
         bounding_box_area(whole_face_pts) )
 
+    # Clip the ratio so the mouth-eyes don't get too small
     mouth_to_face_ratio = max(mouth_to_face_ratio, 0.5)
-
-    print mouth_to_face_ratio
 
     scale_factor = scale_product*mouth_to_face_ratio
 
@@ -193,7 +194,7 @@ def remove_eyes(f, f_out=None):
     #cfilter = np.ones((7,7))
     #nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
     #img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
-
+    
     if FLAG_DEBUG or FLAG_SHOW:
         show(img)
         #exit()
@@ -204,33 +205,64 @@ def remove_eyes(f, f_out=None):
     
     return img
 
+def remove_eyes(f_json, f_img, f_out=None):
 
-##remove_eyes('source_movies/images/000205.jpg')
-#remove_eyes('data/o3ujLxQP8hE/landmarks/000622.jpg.json')
-#remove_eyes('data/o3ujLxQP8hE/landmarks/000545.jpg.json')
-#remove_eyes('data/o3ujLxQP8hE/landmarks/000577.jpg.json')
-#exit()
+    # If output file exists, skip
+    if f_out is not None and os.path.exists(f_out):
+        print "Skipping {}"(f_out)
+        return False
 
+    # Create a copy, needed for multiple faces
+    if f_out is not None:
+        copyfile(f_img, f_out)
+    
+    
+    for k,faceL in enumerate(read_landmarks(f_json)):
+        print "Starting face {}, {}".format(k, f_out)
+        remove_eyes_from_landmarks(faceL, f_out, f_out)
+
+'''
+def process_image(f_img):
+    # Useful for debuging (start directly from an image)
+        
+    f_json = f_image_to_landmark_file(f_img)
+    if not os.path.exists(f_json):
+        print "Building landmarks for", f_img
+        locate_landmarks(f_img, save_data=True, model='hog')
+    
+    #f_json = 'data/KZrMRvvLg58/landmarks/002090.jpg.json'
+    remove_eyes(f_json, f_img)
+
+process_image("source/frames/KZrMRvvLg58/002090.jpg")
+remove_eyes('data/o3ujLxQP8hE/landmarks/000577.jpg.json')
+'''
+
+'''
+remove_eyes(
+    'data/KZrMRvvLg58/landmarks/000217.jpg.json',
+    'source/frames/KZrMRvvLg58/000217.jpg',
+    'test.jpg'
+    )
+'''
 
 if __name__ == "__main__":
-
-    landmark_files = sorted(glob.glob("data/{}/landmarks/*".format(URI)))
+    URI = sys.argv[1]
+    F_IMG = sorted(glob.glob("source/frames/{}/*".format(URI)))
+    
     save_dest = "data/{}/corinthian/".format(URI)
     os.system('mkdir -p {}'.format(save_dest))
 
-
-
-    ITR = landmark_files
-
-    F_OUT = [''.join(os.path.join(save_dest, os.path.basename(f)).split('.json'))
-             for f in ITR]
+    F_OUT = [os.path.join(save_dest, os.path.basename(f)) for f in F_IMG]
 
     if FLAG_DEBUG or FLAG_SHOW:
         THREADS = 1
     else:
         THREADS = -1
 
-
     with joblib.Parallel(THREADS,batch_size=2) as MP:
         func = joblib.delayed(remove_eyes)
-        MP(func(f,f_out) for f,f_out in tqdm(zip(ITR, F_OUT)))
+        MP(func(
+            f_image_to_landmark_file(f_img),
+            f_img,            
+            f_out,
+        ) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
