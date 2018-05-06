@@ -17,7 +17,12 @@ Begin the nightmare
 ![Woody Paige Corinthinan Filter](docs/demo_image_woody.jpg)
 ![Trump Corinthinan Filter](docs/demo_image_trump.jpg)
 ![Charlize Corinthinan Filter](docs/demo_image_charlize.jpg)
+![E. Banks Filter](docs/demo_image_ebanks.jpg)
 
 Developer notes:
 
 How to build a video: Open Kdenlive, import frames as slideshow with 1 image per frame duration. Open org. audio track. Duplicate the audio track twice. Set left/right for each voice and add AM pitchshifter / Multivoice Chrous. Offset tracks by a few milliseconds. Add low ambient hum for evil noise?
+
+Known bugs:
+
++ [ ] Sideways faces fill in wrong

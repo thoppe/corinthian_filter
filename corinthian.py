@@ -14,7 +14,7 @@ from shutil import copyfile
 from find_landmarks import f_image_to_landmark_file, locate_landmarks
 
 FLAG_DEBUG = [False, True,][0]
-FLAG_SHOW = [False, True,][0]
+FLAG_SHOW = [False, True,][1]
 
 scale_product = 1.10
 
@@ -236,6 +236,8 @@ def process_image(f_img, f_out=None):
     remove_eyes(f_json, f_img, f_out)
 
 
+process_image("source/frames/KZrMRvvLg58/000203.jpg")
+exit()
 '''
 #process_image("source/frames/KZrMRvvLg58/002705.jpg")
 remove_eyes('data/o3ujLxQP8hE/landmarks/000577.jpg.json')
