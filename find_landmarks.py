@@ -32,8 +32,8 @@ def locate_landmarks(f_image, save_data=False, model='hog'):
     return landmarks
 
 
-print locate_landmarks("source/frames/o3ujLxQP8hE/000584.jpg",False)
-exit()
+#print locate_landmarks("source/frames/o3ujLxQP8hE/000584.jpg",False)
+#exit()
 
 if __name__ == "__main__":
     from tqdm import tqdm
