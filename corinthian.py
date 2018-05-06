@@ -168,7 +168,7 @@ def remove_eyes_from_landmarks(L, f_img, f_out=None):
         bounding_box_area(whole_face_pts) )
 
     # Clip the ratio so the mouth-eyes don't get too small
-    mouth_to_face_ratio = max(mouth_to_face_ratio, 0.5)
+    mouth_to_face_ratio = np.clip(mouth_to_face_ratio, 0.5, 1.2)
 
     scale_factor = scale_product*mouth_to_face_ratio
 
@@ -209,17 +209,20 @@ def remove_eyes(f_json, f_img, f_out=None):
 
     # If output file exists, skip
     if f_out is not None and os.path.exists(f_out):
-        print "Skipping {}"(f_out)
+        print "Skipping {}".format(f_out)
         return False
 
     # Create a copy, needed for multiple faces
     if f_out is not None:
         copyfile(f_img, f_out)
     
-    
     for k,faceL in enumerate(read_landmarks(f_json)):
         print "Starting face {}, {}".format(k, f_out)
-        remove_eyes_from_landmarks(faceL, f_out, f_out)
+        
+        if f_out is not None:
+            remove_eyes_from_landmarks(faceL, f_out, f_out)
+        else:
+            remove_eyes_from_landmarks(faceL, f_img)
         
 
 def process_image(f_img, f_out=None):
@@ -231,8 +234,10 @@ def process_image(f_img, f_out=None):
         locate_landmarks(f_img, save_data=True, model='hog')
 
     remove_eyes(f_json, f_img, f_out)
+
+
 '''
-process_image("source/frames/KZrMRvvLg58/002090.jpg")
+#process_image("source/frames/KZrMRvvLg58/002705.jpg")
 remove_eyes('data/o3ujLxQP8hE/landmarks/000577.jpg.json')
 '''
 
@@ -258,7 +263,7 @@ if __name__ == "__main__":
     else:
         THREADS = -1
 
-    with joblib.Parallel(THREADS,batch_size=2) as MP:
+    with joblib.Parallel(THREADS,batch_size=4) as MP:
 
         func = joblib.delayed(process_image)
         MP(func(f_img, f_out) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
