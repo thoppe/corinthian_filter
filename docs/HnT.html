@@ -117,6 +117,213 @@
    </div>
   </div>
  </footer>
+</section><section class="align-left bg-black slide" id="slide-number-2">
+ <span class="background dark" style="background-image:url('https://source.unsplash.com/KSg_Uj5CM3Q')">
+ </span>
+ <div class="wrap">
+  <div class="wrap">
+   <div class="text-landing">
+    <text>
+     left of the uncanny valley lies the
+    </text>
+   </div>
+   <div class="text-data">
+    <text>
+     Nope valley
+    </text>
+   </div>
+  </div>
+ </div>
+</section><section class="slide" id="slide-number-3">
+ <span class="background" style="background-image:url('images/outside/neil-gaiman-credit-sasha-maslav_the-new-york-times_redux.jpg')">
+ </span>
+ <div class="wrap">
+  <h3>
+   <text>
+    Project
+    <br>
+     inspired
+     <br>
+      by
+      <br>
+       Neil Gaiman's
+       <br>
+        <em>
+         Sandman
+        </em>
+        <br>
+         character,
+         <br>
+          Corinthian
+         </br>
+        </br>
+       </br>
+      </br>
+     </br>
+    </br>
+   </text>
+  </h3>
+ </div>
+</section><section class="slide" id="slide-number-4">
+ <div class="grid">
+  <div class="column">
+   <h1>
+    <text>
+     <strong>
+      Isolate a face
+     </strong>
+    </text>
+   </h1>
+  </div>
+  <div class="column">
+   <figure>
+    <img src="images/debug0.jpg" style=""/>
+   </figure>
+  </div>
+ </div>
+</section><section class="slide" id="slide-number-5">
+ <div class="grid">
+  <div class="column">
+   <h1>
+    <text>
+     <strong>
+      Find the eyes
+     </strong>
+    </text>
+   </h1>
+  </div>
+  <div class="column">
+   <figure>
+    <img src="images/debug2.jpg" style=""/>
+   </figure>
+  </div>
+ </div>
+</section><section class="slide" id="slide-number-6">
+ <div class="grid">
+  <div class="column">
+   <h1>
+    <text>
+     <strong>
+      Find the mouth
+     </strong>
+    </text>
+   </h1>
+  </div>
+  <div class="column">
+   <figure>
+    <img src="images/debug1.jpg" style=""/>
+   </figure>
+  </div>
+ </div>
+</section><section class="wrap slide" id="slide-number-7">
+ <h1>
+  <text>
+   <strong>
+    Transform
+   </strong>
+  </text>
+ </h1>
+ <div class="grid">
+  <div class="column">
+   <figure>
+    <img src="images/outside/corinthian_comic.jpg" style=""/>
+   </figure>
+  </div>
+  <div class="column">
+   <figure>
+    <img src="images/debug3.jpg" style=""/>
+   </figure>
+  </div>
+ </div>
+</section><section class="wrap slide" id="slide-number-8">
+ <div class="text-landing">
+  <h2>
+   <text>
+    Technical details
+   </text>
+  </h2>
+ </div>
+ <h4>
+  <ul class="markdownlist">
+   <li>
+    <text>
+     Everything is scripted
+    </text>
+   </li>
+   <li>
+    <text>
+     Faces are found with a CNN
+    </text>
+   </li>
+   <li>
+    <text>
+     Facial landmark masks from dlib
+    </text>
+   </li>
+   <li>
+    <text>
+     Mouths are placed on the eye center-of-mass
+    </text>
+   </li>
+   <li>
+    <text>
+     Masks expanded with a simple block convolution
+    </text>
+   </li>
+   <li>
+    <text>
+     Mini-mouths sized by sqrt of eye/face ratios
+    </text>
+   </li>
+   <li>
+    <text>
+     Sizing is clipped from 0.5 to 1.2
+    </text>
+   </li>
+   <li>
+    <text>
+     After pasting, mouths are expanded and in-filled
+    </text>
+   </li>
+  </ul>
+ </h4>
+</section><section class="wrap slide" id="slide-number-9">
+ <div class="text-landing">
+  <h2>
+   <text>
+    Code
+   </text>
+  </h2>
+ </div>
+ <div class="text-landing">
+  <text>
+   only a few hundred magic lines
+  </text>
+ </div>
+ <pre class="prettyprint">cfilter = np.ones((3,3))
+mouth = convolve(mouth, cfilter).astype(np.bool)
+# Fill the mouth in if it isn't too open
+mouth = morph.binary_fill_holes(mouth)
+whole_face_pts = np.vstack([L[k] for k in L])
+mouth_pts = np.vstack([L[k] for k in mouth_keys])
+nose_pts = np.vstack([L[k] for k in ['nose_tip','nose_bridge']])
+face_mask = get_mask(whole_face_pts, height, width)
+mouth_to_face_ratio = np.sqrt(bounding_box_area(mouth_pts) / bounding_box_area(whole_face_pts) )
+# Clip the ratio so the mouth-eyes don't get too small
+mouth_to_face_ratio = np.clip(mouth_to_face_ratio, 0.5, 1.2)
+left_eye = get_mask(L['left_eye'], height, width)
+E0 = copy_mask(img, left_eye, mouth, mouth_to_face_ratio)
+# Inpaint around the eyes one out and one in from the outer edge
+d = morph.binary_dilation(E0,iterations=1) &amp; (~E0) #&amp; (~nose_mask)
+d = morph.binary_dilation(d,iterations=1)
+img = inpaint.inpaint_biharmonic(img, d, multichannel=True)
+img = np.clip((img*255).astype(np.uint8), 0, 255)</pre>
+ <text>
+  really, just go here
+  <a href="https://github.com/thoppe/corinthian_filter">
+   https://github.com/thoppe/corinthian_filter
+  </a>
+ </text>
 </section>
    </article>
   </main>
