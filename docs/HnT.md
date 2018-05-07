@@ -96,7 +96,6 @@ really, just go here [https://github.com/thoppe/corinthian_filter](https://githu
 
 
 ---- .wrap
-
 .text-landing @h1 Why stop with just one?
 
 .grid
@@ -107,3 +106,7 @@ really, just go here [https://github.com/thoppe/corinthian_filter](https://githu
 	| @figure(images/demo_image_trump.jpg)
 	| @figure(images/demo_image_woody.jpg)
 	| @figure(images/demo_image_gaimen.jpg)
+
+---- .bg-black 
+@background_video(images/Obama.mp4)
+@footer .text-landing @h1 [PLAY ALL](https://www.youtube.com/watch?v=brKu9eVt2fY)
