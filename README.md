@@ -12,12 +12,12 @@ Begin the nightmare
 
     python corinthian.py cVW6jBbD5Q8
 
-![Obama Corinthinan Filter](docs/demo_image_obama.jpg)
-![Gaimen Corinthinan Filter](docs/demo_image_gaimen.jpg)
-![Woody Paige Corinthinan Filter](docs/demo_image_woody.jpg)
-![Trump Corinthinan Filter](docs/demo_image_trump.jpg)
-![Charlize Corinthinan Filter](docs/demo_image_charlize.jpg)
-![E. Banks Filter](docs/demo_image_ebanks.jpg)
+![Obama Corinthinan Filter](docs/images/demo_image_obama.jpg)
+![Gaimen Corinthinan Filter](docs/images/demo_image_gaimen.jpg)
+![Woody Paige Corinthinan Filter](docs/images/demo_image_woody.jpg)
+![Trump Corinthinan Filter](docs/images/demo_image_trump.jpg)
+![Charlize Corinthinan Filter](docs/images/demo_image_charlize.jpg)
+![E. Banks Filter](docs/images/demo_image_ebanks.jpg)
 
 Developer notes:
 

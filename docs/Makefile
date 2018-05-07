@@ -1,0 +1,2 @@
+all:
+	miniprez HnT.md
