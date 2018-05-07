@@ -197,7 +197,10 @@ def remove_eyes_from_landmarks(L, f_img, f_out=None):
     
     if FLAG_DEBUG or FLAG_SHOW:
         show(img)
-        #exit()
+
+        if FLAG_DEBUG:
+            cv2.imgwrite("debug_image.jpg", img)
+        exit()
 
     elif f_out is not None:
         print "Saved", f_out
@@ -252,7 +255,7 @@ remove_eyes(
 '''
 
 if __name__ == "__main__":
-    URI = sys.argv[1]
+    URI = sys.argv[1]    
     F_IMG = sorted(glob.glob("source/frames/{}/*".format(URI)))
     
     save_dest = "data/{}/corinthian/".format(URI)
