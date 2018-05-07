@@ -269,12 +269,3 @@ if __name__ == "__main__":
 
         func = joblib.delayed(process_image)
         MP(func(f_img, f_out) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
-
-        '''
-        func = joblib.delayed(remove_eyes)
-        MP(func(
-            f_image_to_landmark_file(f_img),
-            f_img,            
-            f_out,
-        ) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
-        '''
