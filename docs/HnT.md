@@ -24,34 +24,31 @@
    Project <br> inspired <br> by <br> Neil Gaiman's <br> _Sandman_ <br> character, <br> Corinthian
 
 ----
+@unsplash(_JpQfgcCa2o) 
 .grid
     | @h1 **Isolate a face**
     | @figure(images/debug0.jpg)
-----
+---- 
+@unsplash(_JpQfgcCa2o) 
 .grid
     | @h1 **Find the eyes**
     | @figure(images/debug2.jpg)
 ----
+@unsplash(_JpQfgcCa2o) 
 .grid
     | @h1 **Find the mouth**	
     | @figure(images/debug1.jpg)
----- .wrap 
+---- 
+@unsplash(_JpQfgcCa2o) 
 @h1 **Transform**	
 .grid
     | @figure(images/outside/corinthian_comic.jpg)
     | @figure(images/debug3.jpg)
----- .wrap 
-.text-landing @h2 Technical details
-@h4
-    + Everything is scripted
-    + Faces are found with a CNN
-    + Facial landmark masks from dlib
-    + Mouths are placed on the eye center-of-mass
-    + Masks expanded with a simple block convolution
-    + Mini-mouths sized by sqrt of eye/face ratios
-    + Sizing is clipped from 0.5 to 1.2     
-    + After pasting, mouths are expanded and in-filled
----- .wrap
+
+----
+@unsplash(ftL6uqlQOnU) 
+
+
 .text-landing @h2 Code
 .text-landing only a few hundred magic lines
 ```
@@ -82,3 +79,31 @@ img = inpaint.inpaint_biharmonic(img, d, multichannel=True)
 img = np.clip((img*255).astype(np.uint8), 0, 255)
 ```
 really, just go here [https://github.com/thoppe/corinthian_filter](https://github.com/thoppe/corinthian_filter)
+
+---- .bg-black
+.wrap
+	.text-landing @h2 Technical details
+	@h4
+	    + Everything is scripted
+	    + Faces are found with a CNN
+	    + Facial landmarks from dlib
+	    + Masks created from convex hull fill
+	    + Masks expanded with a simple block convolution
+	    + Mouths are placed on the eye center-of-mass
+	    + Mini-mouths sized by sqrt of eye/face ratios
+	    + Sizing is clipped from 0.5 to 1.2     
+	    + After pasting, mouths are expanded and in-filled (smoothing)
+
+
+---- .wrap
+
+.text-landing @h1 Why stop with just one?
+
+.grid
+	| @figure(images/demo_image_obama.jpg)
+	| @figure(images/demo_image_charlize.jpg)
+	| @figure(images/demo_image_ebanks.jpg)
+.grid
+	| @figure(images/demo_image_trump.jpg)
+	| @figure(images/demo_image_woody.jpg)
+	| @figure(images/demo_image_gaimen.jpg)
