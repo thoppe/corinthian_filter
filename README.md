@@ -19,9 +19,10 @@ Begin the nightmare
 ![Charlize Corinthinan Filter](docs/images/demo_image_charlize.jpg)
 ![E. Banks Filter](docs/images/demo_image_ebanks.jpg)
 
-Developer notes:
+Watch it in action:
 
-How to build a video: Open Kdenlive, import frames as slideshow with 1 image per frame duration. Open org. audio track. Duplicate the audio track twice. Set left/right for each voice and add AM pitchshifter / Multivoice Chrous. Offset tracks by a few milliseconds. Add low ambient hum for evil noise?
+https://youtu.be/JPhnuYbPG1s
+
 
 Known bugs:
 
