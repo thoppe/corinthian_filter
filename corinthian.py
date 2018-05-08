@@ -4,7 +4,6 @@ import numpy as np
 import cv2
 import joblib
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 from skimage.restoration import inpaint
 from scipy.ndimage.filters import convolve
 import scipy.ndimage.morphology as morph

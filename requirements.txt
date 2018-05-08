@@ -1,0 +1,12 @@
+# Numerical libs
+numpy
+scipy
+
+# DL/image libs
+opencv-python
+face_recognition
+scikit-image
+
+# Helper libs
+tqdm
+joblib
