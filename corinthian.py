@@ -65,12 +65,14 @@ def overlay(X, Y, x_offset, y_offset):
 
 def get_extent(pts):
     # Return the bounding box (y0,y1,x0,x1)
-    return pts[0].min(), pts[0].max(), pts[1].min(), pts[1].max()
+    y0,y1 = pts[0].min(), pts[0].max()
+    x0,x1 = pts[1].min(), pts[1].max()
+    
+    return y0,y1,x0,x1
 
 def bounding_box_area(pts):
     y0,y1,x0,x1 = get_extent(pts)
     return (y1-y0)*(x1-x0)
-
 
 def copy_mask(img, mask0, mask1, resize_factor=1.5):
 
@@ -101,7 +103,12 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
     CMX = ptsX.mean(axis=1).astype(int)
 
     # Adjust so that the center of masses line up
-    y_offset, x_offset = CM0 - CMX
+    y_offset, x_offset = np.clip(CM0 - CMX, 0, 10**20)
+
+    # Adjust the values in case they go off the screen
+    y_offset = min(y_offset, img.shape[0])
+    x_offset = min(x_offset, img.shape[1])
+    
 
     # Overlay the image and account of transparent background
     overlay(img, imgX, x_offset, y_offset)
@@ -238,20 +245,8 @@ def process_image(f_img, f_out=None):
     remove_eyes(f_json, f_img, f_out)
 
 
-#process_image("source/frames/KZrMRvvLg58/000203.jpg")
+#process_image("source/frames/hX25kn5x4Yg/002246.jpg")
 #exit()
-'''
-#process_image("source/frames/KZrMRvvLg58/002705.jpg")
-remove_eyes('data/o3ujLxQP8hE/landmarks/000577.jpg.json')
-'''
-
-'''
-remove_eyes(
-    'data/KZrMRvvLg58/landmarks/000217.jpg.json',
-    'source/frames/KZrMRvvLg58/000217.jpg',
-    'test.jpg'
-    )
-'''
 
 if __name__ == "__main__":
     URI = sys.argv[1]    
