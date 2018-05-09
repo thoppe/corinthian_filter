@@ -10,3 +10,4 @@ scikit-image
 # Helper libs
 tqdm
 joblib
+docopt

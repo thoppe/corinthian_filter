@@ -22,7 +22,7 @@ Download a video, convert it into frames, find landmarks
 
 Begin the nightmare
 
-    python corinthian.py cVW6jBbD5Q8
+    python corinthian.py cVW6jBbD5Q8 --URI
 
 
 Known bugs:

@@ -1,10 +1,10 @@
-target = "hX25kn5x4Yg"
+target = "IH8K0bPc-BE"
 
 all:
 	mkdir -p source
 	youtube-dl $(target) -o source/$(target).mp4
 	python extract_frames.py $(target)
-	python corinthian.py $(target)
+	python corinthian.py --URI $(target)
 	make movie_corinthian
 
 movie_corinthian:
