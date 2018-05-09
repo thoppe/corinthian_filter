@@ -10,7 +10,7 @@ Options:
   --version     Show version.
   -d --debug       Debug mode
   -v --view        View only mode
-  --scale_product=<f>  Amount to scale mouthes [default: 1.10]
+  -s --scale_product=<f>  Amount to scale mouthes [default: 1.10]
 """
 
 from __future__ import division
@@ -226,7 +226,7 @@ def remove_eyes(L, f_img, f_out=None):
     copyfile(f_img, f_tmp)
     
     for k,faceL in enumerate(L):
-        print "Starting face {}, {}".format(k, f_out)
+        print "Starting face {}, {}".format(k, f_img)
         img = remove_eyes_from_landmarks(faceL, f_tmp)
         cv2.imwrite(f_tmp, img)
         
@@ -257,10 +257,7 @@ def process_image(f_img, f_out=None, save_landmarks=True):
         L = locate_landmarks(f_img, save_data=False, model='hog')
 
     remove_eyes(L, f_img, f_out)
-
-
-#process_image("source/frames/hX25kn5x4Yg/002246.jpg")
-#exit()
+    
 
 if __name__ == "__main__":
     
