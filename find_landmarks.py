@@ -31,11 +31,12 @@ def locate_landmarks(
 
     if upsample_attempts:
         base_upsample = 1
+        upsample_n = 2
         if not faces:
             print "No faces found, upsampling", f_image
             
             faces = face_recognition.face_locations(
-                image,base_upsample+1,model="cnn")
+                image,base_upsample+upsample_n,model=model)
 
     landmarks = face_recognition.face_landmarks(image, face_locations=faces)
 
@@ -56,10 +57,6 @@ def locate_landmarks(
 
     return landmarks
 
-
-#print locate_landmarks("source/frames/o3ujLxQP8hE/000584.jpg",False)
-#exit()
-
 if __name__ == "__main__":
     from tqdm import tqdm
     import glob
@@ -67,10 +64,13 @@ if __name__ == "__main__":
     
     start_frame = 0
     end_frame  = 10**20
+
+    L = locate_landmarks(sys.argv[1], upsample_attempts=True)
+    print L
+
+    '''
     name = sys.argv[1]
    
-
-
     JPG = sorted(glob.glob("source/frames/{}/*".format(name)))
     JPG = JPG[start_frame:end_frame]
 
@@ -79,4 +79,4 @@ if __name__ == "__main__":
 
     with joblib.Parallel(-1, batch_size=2) as MP:
         MP(func(x,save_data=True) for x in ITR)
-
+    '''
