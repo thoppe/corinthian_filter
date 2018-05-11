@@ -9,7 +9,16 @@ def f_image_to_landmark_file(f_image):
     os.system('mkdir -p {}'.format(save_dest))
     return os.path.join(save_dest, os.path.basename(f_image)) + '.json'
 
-def locate_landmarks(f_image, save_data=False, model='hog'):
+def locate_landmarks(
+        f_image,
+        save_data=False,
+        model='hog',
+        upsample_attempts=0
+):
+    '''
+    If upsample attempts > 0, keep upsampling the image until we find at least
+    a single face.
+    '''
 
     if save_data:
         f_json = f_image_to_landmark_file(f_image)
@@ -19,7 +28,19 @@ def locate_landmarks(f_image, save_data=False, model='hog'):
     # Load the jpg file into a numpy array
     image = face_recognition.load_image_file(f_image)
     faces = face_recognition.face_locations(image,model=model)
+
+    for n in range(upsample_attempts):
+        base_upsample = 1
+        if not faces:
+            print "No faces found, upsampling", f_image
+            faces = face_recognition.face_locations(
+                image,base_upsample+n+1,model=model)
+
     landmarks = face_recognition.face_landmarks(image, face_locations=faces)
+
+    for face in landmarks:
+        for key in face:
+            face[key] = [(int(x), int(y)) for (x,y) in face[key]]
     
     if len(landmarks) == 0:
         landmarks = {}

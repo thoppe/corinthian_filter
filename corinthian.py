@@ -148,7 +148,6 @@ def remove_eyes_from_landmarks(L, f_img):
     for key in L:
         L[key] = np.array(L[key])
     
-    
     assert(os.path.exists(f_img))
     img = cv2.imread(f_img)
 
@@ -242,19 +241,22 @@ def remove_eyes(L, f_img, f_out=None):
 
         
 
-def process_image(f_img, f_out=None, save_landmarks=True):
+def process_image(f_img, f_out=None, save_landmarks=True,
+                  upsample_attempts=2):
+
     # Useful for debuging (start directly from an image)
+    args = {"model":"hog", "upsample_attempts":upsample_attempts}
     
     if save_landmarks:
         f_json = f_image_to_landmark_file(f_img)
         
         if not os.path.exists(f_json):
             print "Building landmarks for", f_img
-            L = locate_landmarks(f_img, save_data=True, model='hog')
+            L = locate_landmarks(f_img, save_data=True, **args)
         else:
             L = read_landmarks(f_json)
     else:
-        L = locate_landmarks(f_img, save_data=False, model='hog')
+        L = locate_landmarks(f_img, save_data=False, **args)
 
     remove_eyes(L, f_img, f_out)
     
