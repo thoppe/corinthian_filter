@@ -20,6 +20,7 @@ import cv2
 import joblib
 from tqdm import tqdm
 from skimage.restoration import inpaint
+from skimage.morphology import convex_hull_image
 from scipy.ndimage.filters import convolve
 import scipy.ndimage.morphology as morph
 from skimage.restoration import inpaint
@@ -39,9 +40,12 @@ def read_landmarks(f_json):
     return js
 
 def get_mask(pts, height, width):
+
+    hull = cv2.convexHull(pts)
     mask = np.zeros((height, width))
-    cv2.fillConvexPoly(mask, pts, 1)
+    cv2.fillConvexPoly(mask, hull, 1)
     mask = mask.astype(np.bool)
+    
     return mask
 
 def show_mask(mask, img):
@@ -144,7 +148,7 @@ def blend_images_over_mask(img0, img1, mask, w=1.0):
 
 def remove_eyes_from_landmarks(L, f_img):
 
-    # Cast all the larndmarks to numpy arrays
+    # Cast all the landmarks to numpy arrays
     for key in L:
         L[key] = np.array(L[key])
     
@@ -164,8 +168,8 @@ def remove_eyes_from_landmarks(L, f_img):
     mouth = np.array(masks).astype(int).sum(axis=0)
 
     # Fill in the mouth a bit
-    cfilter = np.ones((3,3))
-    mouth = convolve(mouth, cfilter).astype(np.bool)
+    #cfilter = np.ones((3,3))
+    #mouth = convolve(mouth, cfilter).astype(np.bool)
     
     # Fill the mouth in if it isn't too open
     mouth = morph.binary_fill_holes(mouth)
@@ -188,7 +192,7 @@ def remove_eyes_from_landmarks(L, f_img):
 
     left_eye = get_mask(L['left_eye'], height, width)
     right_eye = get_mask(L['right_eye'], height, width)
-    
+
     E0 = copy_mask(img, left_eye, mouth, scale_factor)
     E1 = copy_mask(img, right_eye, mouth, scale_factor)
     
@@ -202,13 +206,18 @@ def remove_eyes_from_landmarks(L, f_img):
     d = morph.binary_dilation(d,iterations=1)
     img = inpaint.inpaint_biharmonic(img, d, multichannel=True)
     img = np.clip((img*255).astype(np.uint8), 0, 255)
-
+    
     # Draw back over the nose part a bit
     #img[nose_mask] = org_img[nose_mask]
     #cfilter = np.ones((7,7))
     #nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
     #img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
-    
+
+    if FLAG_DEBUG:
+        for key in ['top_lip', 'bottom_lip', 'right_eye', 'left_eye']:
+            X = L[key]
+            img[X[:,1], X[:,0]] = [255,255,255,100]
+
     return img
 
 def remove_eyes(L, f_img, f_out=None):
