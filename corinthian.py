@@ -166,8 +166,8 @@ def remove_eyes_from_landmarks(L, f_img):
     mouth = np.array(masks).astype(int).sum(axis=0)
 
     # Fill in the mouth a bit
-    #cfilter = np.ones((3,3))
-    #mouth = convolve(mouth, cfilter).astype(np.bool)
+    cfilter = np.ones((3,3))
+    mouth = convolve(mouth, cfilter).astype(np.bool)
     
     # Fill the mouth in if it isn't too open
     mouth = morph.binary_fill_holes(mouth)
@@ -191,9 +191,13 @@ def remove_eyes_from_landmarks(L, f_img):
     left_eye = get_mask(L['left_eye'], height, width)
     right_eye = get_mask(L['right_eye'], height, width)
 
+    # Inpaint the whole eye area, dialated a few times
+    eye_mask = morph.binary_dilation(left_eye|right_eye,iterations=3)
+    img = inpaint.inpaint_biharmonic(img, eye_mask, multichannel=True)    
+
     E0 = copy_mask(img, left_eye, mouth, scale_factor)
     E1 = copy_mask(img, right_eye, mouth, scale_factor)
-    
+
     # Inpaint around the eyes one out and one in from the outer edge
     d = morph.binary_dilation(E0,iterations=1) & (~E0) #& (~nose_mask)
     d = morph.binary_dilation(d,iterations=1)
