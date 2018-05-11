@@ -1,5 +1,7 @@
 import face_recognition
 import os, json
+import dlib
+import face_recognition_models
 
 def f_image_to_landmark_file(f_image):
     dname = f_image.split('/')[-2]
@@ -16,7 +18,6 @@ def locate_landmarks(f_image, save_data=False, model='hog'):
 
     # Load the jpg file into a numpy array
     image = face_recognition.load_image_file(f_image)
-
     faces = face_recognition.face_locations(image,model=model)
     landmarks = face_recognition.face_landmarks(image, face_locations=faces)
     

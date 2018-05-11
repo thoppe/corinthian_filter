@@ -1,3 +1,18 @@
+"""Corinthian Filter
+
+Usage:
+  corinthian.py <location> --URI [--scale_product=<f>]
+  corinthian.py <f_image> [--debug] [--view] [--scale_product=<f>]
+
+
+Options:
+  -h --help     Show this screen.
+  --version     Show version.
+  -d --debug       Debug mode
+  -v --view        View only mode
+  -s --scale_product=<f>  Amount to scale mouthes [default: 1.10]
+"""
+
 from __future__ import division
 import glob, os, json, sys
 import numpy as np
@@ -9,13 +24,10 @@ from scipy.ndimage.filters import convolve
 import scipy.ndimage.morphology as morph
 from skimage.restoration import inpaint
 from shutil import copyfile
+from docopt import docopt
+import tempfile
 
 from find_landmarks import f_image_to_landmark_file, locate_landmarks
-
-FLAG_DEBUG = [False, True,][0]
-FLAG_SHOW = [False, True,][0]
-
-scale_product = 1.10
 
 def read_landmarks(f_json):
     
@@ -24,10 +36,6 @@ def read_landmarks(f_json):
     with open(f_json, 'r') as FIN:
         js = json.loads(FIN.read())
 
-    for face in js:
-        for key in face:
-            face[key] = np.array(face[key])
-            
     return js
 
 def get_mask(pts, height, width):
@@ -134,12 +142,13 @@ def blend_images_over_mask(img0, img1, mask, w=1.0):
     return f10.astype(np.uint8)
 
 
-def remove_eyes_from_landmarks(L, f_img, f_out=None):
-    #load_dest = "source/frames/{}".format(URI)
-    #    f_img = f_landmark_to_image_file(f)
-    #''.join(
-    #    os.path.join(load_dest, os.path.basename(f)).split('.json'))
+def remove_eyes_from_landmarks(L, f_img):
 
+    # Cast all the larndmarks to numpy arrays
+    for key in L:
+        L[key] = np.array(L[key])
+    
+    
     assert(os.path.exists(f_img))
     img = cv2.imread(f_img)
 
@@ -201,68 +210,82 @@ def remove_eyes_from_landmarks(L, f_img, f_out=None):
     #nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
     #img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
     
-    if FLAG_DEBUG or FLAG_SHOW:
-        show(img)
-
-        if FLAG_DEBUG:
-            cv2.imgwrite("debug_image.jpg", img)
-        exit()
-
-    elif f_out is not None:
-        print "Saved", f_out
-        cv2.imwrite(f_out, img)
-    
     return img
 
-def remove_eyes(f_json, f_img, f_out=None):
+def remove_eyes(L, f_img, f_out=None):
 
     # If output file exists, skip
     if f_out is not None and os.path.exists(f_out):
         print "Skipping {}".format(f_out)
         return False
 
+    TMP = tempfile.NamedTemporaryFile(suffix='.jpg')
+    f_tmp = TMP.name
+
     # Create a copy, needed for multiple faces
-    if f_out is not None:
-        copyfile(f_img, f_out)
+    copyfile(f_img, f_tmp)
     
-    for k,faceL in enumerate(read_landmarks(f_json)):
-        print "Starting face {}, {}".format(k, f_out)
+    for k,faceL in enumerate(L):
+        print "Starting face {}, {}".format(k, f_img)
+        img = remove_eyes_from_landmarks(faceL, f_tmp)
+        cv2.imwrite(f_tmp, img)
         
-        if f_out is not None:
-            remove_eyes_from_landmarks(faceL, f_out, f_out)
-        else:
-            remove_eyes_from_landmarks(faceL, f_img)
+    if L and (FLAG_DEBUG or FLAG_VIEW):
+        show(img)
+        exit()
+        
+    if f_out is not None:
+        print "Saved", f_out
+        copyfile(f_tmp, f_out)
+
+    TMP.close()                
+
         
 
-def process_image(f_img, f_out=None):
+def process_image(f_img, f_out=None, save_landmarks=True):
     # Useful for debuging (start directly from an image)
+    
+    if save_landmarks:
+        f_json = f_image_to_landmark_file(f_img)
         
-    f_json = f_image_to_landmark_file(f_img)
-    if not os.path.exists(f_json):
-        print "Building landmarks for", f_img
-        locate_landmarks(f_img, save_data=True, model='hog')
+        if not os.path.exists(f_json):
+            print "Building landmarks for", f_img
+            L = locate_landmarks(f_img, save_data=True, model='hog')
+        else:
+            L = read_landmarks(f_json)
+    else:
+        L = locate_landmarks(f_img, save_data=False, model='hog')
 
-    remove_eyes(f_json, f_img, f_out)
-
-
-#process_image("source/frames/hX25kn5x4Yg/002246.jpg")
-#exit()
+    remove_eyes(L, f_img, f_out)
+    
 
 if __name__ == "__main__":
-    URI = sys.argv[1]    
-    F_IMG = sorted(glob.glob("source/frames/{}/*".format(URI)))
     
-    save_dest = "data/{}/corinthian/".format(URI)
-    os.system('mkdir -p {}'.format(save_dest))
+    args = docopt(__doc__, version='corinthian 0.1')
+    
+    FLAG_DEBUG = args["--debug"]
+    FLAG_VIEW = args["--view"]
+    scale_product = float(args["--scale_product"])
 
-    F_OUT = [os.path.join(save_dest, os.path.basename(f)) for f in F_IMG]
+    # If we are parsing a single image
+    if not args['--URI']:
+        process_image(args["<f_image>"], save_landmarks=False)
 
-    if FLAG_DEBUG or FLAG_SHOW:
-        THREADS = 1
-    else:
-        THREADS = -1
+    # If we are parsing a set of images
+    if args['--URI']:
+        loc = args['<location>']
+        F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))
+        save_dest = "data/{}/corinthian/".format(loc)
+        os.system('mkdir -p {}'.format(save_dest))
 
-    with joblib.Parallel(THREADS,batch_size=4) as MP:
+        F_OUT = [os.path.join(save_dest, os.path.basename(f)) for f in F_IMG]
+    
+        if FLAG_DEBUG or FLAG_VIEW:
+            THREADS = 1
+        else:
+            THREADS = -1
 
-        func = joblib.delayed(process_image)
-        MP(func(f_img, f_out) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
+        with joblib.Parallel(THREADS,batch_size=4) as MP:
+
+            func = joblib.delayed(process_image)
+            MP(func(f_img, f_out) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
