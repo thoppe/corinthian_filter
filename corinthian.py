@@ -2,14 +2,12 @@
 
 Usage:
   corinthian.py <location> --URI [--scale_product=<f>]
-  corinthian.py <f_image> [--debug] [--view] [--scale_product=<f>]
-
+  corinthian.py <f_image> [--debug] [--scale_product=<f>]
 
 Options:
   -h --help     Show this screen.
   --version     Show version.
   -d --debug       Debug mode
-  -v --view        View only mode
   -s --scale_product=<f>  Amount to scale mouthes [default: 1.10]
 """
 
@@ -275,11 +273,12 @@ if __name__ == "__main__":
     args = docopt(__doc__, version='corinthian 0.1')
     
     FLAG_DEBUG = args["--debug"]
-    FLAG_VIEW = args["--view"]
+    FLAG_VIEW = False
     scale_product = float(args["--scale_product"])
 
     # If we are parsing a single image
     if not args['--URI']:
+        FLAG_VIEW = True
         process_image(args["<f_image>"], save_landmarks=False)
 
     # If we are parsing a set of images
@@ -297,6 +296,5 @@ if __name__ == "__main__":
             THREADS = -1
 
         with joblib.Parallel(THREADS,batch_size=4) as MP:
-
             func = joblib.delayed(process_image)
             MP(func(f_img, f_out) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
