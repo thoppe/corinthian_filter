@@ -13,7 +13,7 @@ def locate_landmarks(
         f_image,
         save_data=False,
         model='hog',
-        upsample_attempts=0
+        upsample_attempts=False,
 ):
     '''
     If upsample attempts > 0, keep upsampling the image until we find at least
@@ -29,12 +29,13 @@ def locate_landmarks(
     image = face_recognition.load_image_file(f_image)
     faces = face_recognition.face_locations(image,model=model)
 
-    for n in range(upsample_attempts):
+    if upsample_attempts:
         base_upsample = 1
         if not faces:
             print "No faces found, upsampling", f_image
+            
             faces = face_recognition.face_locations(
-                image,base_upsample+n+1,model=model)
+                image,base_upsample+1,model="cnn")
 
     landmarks = face_recognition.face_landmarks(image, face_locations=faces)
 
