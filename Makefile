@@ -4,8 +4,8 @@ all:
 	mkdir -p source
 	youtube-dl $(target) -o source/$(target).mp4
 	python extract_frames.py $(target)
-	make corinthian
-	make movie_corinthian
+#	make corinthian
+#	make movie_corinthian
 
 corinthian:
 	python corinthian.py --URI $(target)

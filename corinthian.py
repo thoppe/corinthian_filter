@@ -26,7 +26,15 @@ from shutil import copyfile
 from docopt import docopt
 import tempfile
 
-from find_landmarks import f_image_to_landmark_file, locate_landmarks
+from find_landmarks_FAN import locate_landmarks, landmarks_from_image
+
+def f_image_to_landmark_file(f_image):
+    dname = f_image.split('/')[-2]
+    save_dest = os.path.join('data', dname, 'landmarks')
+    os.system('mkdir -p {}'.format(save_dest))
+    return os.path.join(save_dest, os.path.basename(f_image)) + '.json'
+
+
 
 def read_landmarks(f_json):
     
@@ -252,25 +260,38 @@ def remove_eyes(L, f_img, f_out=None):
 
         
 
-def process_image(f_img, f_out=None, save_landmarks=True,
-                  upsample_attempts=2):
+def process_image(
+        f_img, f_out=None, save_landmarks=True,
+):
 
     # Useful for debuging (start directly from an image)
-    args = {"model":"hog", "upsample_attempts":upsample_attempts}
+    args = {}
     
     if save_landmarks:
         f_json = f_image_to_landmark_file(f_img)
         
         if not os.path.exists(f_json):
             print "Building landmarks for", f_img
-            L = locate_landmarks(f_img, save_data=True, **args)
+            L = landmarks_from_image(f_img, save_data=True)
         else:
             L = read_landmarks(f_json)
     else:
-        L = locate_landmarks(f_img, save_data=False, **args)
+        L = landmarks_from_image(f_img, save_data=False)
 
     remove_eyes(L, f_img, f_out)
-    
+
+
+'''
+L = read_landmarks("data/hX25kn5x4Yg/landmarks/000012.jpg.json")
+f_img = "source/frames/hX25kn5x4Yg/000012.jpg"
+scale_product = 1.1
+FLAG_DEBUG = True
+FLAG_VIEW = False
+remove_eyes(L, f_img, "demo.jpg")
+
+print L
+exit()
+'''    
 
 if __name__ == "__main__":
     
@@ -283,12 +304,14 @@ if __name__ == "__main__":
     # If we are parsing a single image
     if not args['--URI']:
         FLAG_VIEW = True
-        process_image(args["<f_image>"], save_landmarks=False)
+        #process_image(args["<f_image>"], save_landmarks=False)
+        process_image(args["<f_image>"], save_landmarks=True)
 
     # If we are parsing a set of images
     if args['--URI']:
         loc = args['<location>']
         F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))
+        
         save_dest = "data/{}/corinthian/".format(loc)
         os.system('mkdir -p {}'.format(save_dest))
 
@@ -298,6 +321,8 @@ if __name__ == "__main__":
             THREADS = 1
         else:
             THREADS = -1
+
+        THREADS = 1
 
         with joblib.Parallel(THREADS,batch_size=4) as MP:
             func = joblib.delayed(process_image)
