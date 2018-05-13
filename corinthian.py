@@ -12,19 +12,15 @@ Options:
 """
 
 from __future__ import division
-import glob, os, json, sys
+import glob, os, json, sys, tempfile
 import numpy as np
 import cv2
 import joblib
 from tqdm import tqdm
-from skimage.restoration import inpaint
-from skimage.morphology import convex_hull_image
 from scipy.ndimage.filters import convolve
 import scipy.ndimage.morphology as morph
-from skimage.restoration import inpaint
 from shutil import copyfile
 from docopt import docopt
-import tempfile
 
 
 def f_image_to_landmark_file(f_image):
