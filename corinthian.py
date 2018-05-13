@@ -26,8 +26,6 @@ from shutil import copyfile
 from docopt import docopt
 import tempfile
 
-from find_landmarks_FAN import locate_landmarks, landmarks_from_image
-
 def f_image_to_landmark_file(f_image):
     dname = f_image.split('/')[-2]
     save_dest = os.path.join('data', dname, 'landmarks')
@@ -46,6 +44,10 @@ def read_landmarks(f_json):
     return js
 
 def get_mask(pts, height, width):
+
+    # Keep the points within the frame
+    idx = (pts[:,0]<width) & (pts[:,1]<height)
+    pts = pts[idx]
 
     hull = cv2.convexHull(pts)
     mask = np.zeros((height, width))
@@ -166,12 +168,20 @@ def remove_eyes_from_landmarks(L, f_img):
     ac = np.ones(bc.shape, dtype=bc.dtype) * 0
     img = cv2.merge((bc,gc,rc,ac))
     org_img = img.copy()
-    
+        
     height, width, _ = img.shape
+
+    left_eye = get_mask(L['left_eye'], height, width)
+    right_eye = get_mask(L['right_eye'], height, width)
 
     mouth_keys = ['top_lip','bottom_lip']
     masks = [get_mask(L[k], height, width) for k in mouth_keys]
     mouth = np.array(masks).astype(int).sum(axis=0)
+
+    # Inpaint the whole eye area, dialated a few times
+    if not FLAG_DEBUG:
+        eye_mask = morph.binary_dilation(left_eye|right_eye,iterations=3)
+        img = inpaint.inpaint_biharmonic(img, eye_mask, multichannel=True)    
 
     # Fill in the mouth a bit
     cfilter = np.ones((3,3))
@@ -193,40 +203,34 @@ def remove_eyes_from_landmarks(L, f_img):
 
     # Clip the ratio so the mouth-eyes don't get too small
     mouth_to_face_ratio = np.clip(mouth_to_face_ratio, 0.5, 1.2)
-
     scale_factor = scale_product*mouth_to_face_ratio
-
-    left_eye = get_mask(L['left_eye'], height, width)
-    right_eye = get_mask(L['right_eye'], height, width)
-
-    # Inpaint the whole eye area, dialated a few times
-    eye_mask = morph.binary_dilation(left_eye|right_eye,iterations=3)
-    img = inpaint.inpaint_biharmonic(img, eye_mask, multichannel=True)    
-
+        
     E0 = copy_mask(img, left_eye, mouth, scale_factor)
     E1 = copy_mask(img, right_eye, mouth, scale_factor)
 
-    # Inpaint around the eyes one out and one in from the outer edge
-    d = morph.binary_dilation(E0,iterations=1) & (~E0) #& (~nose_mask)
-    d = morph.binary_dilation(d,iterations=1)
-    img = inpaint.inpaint_biharmonic(img, d, multichannel=True)
-    img = np.clip((img*255).astype(np.uint8), 0, 255)
+    d0 = morph.binary_dilation(E0,iterations=1)
+    d1 = morph.binary_dilation(E1,iterations=1)
+    outline = (d0|d1) & (~(E0|E1|nose_mask))
+    outline = morph.binary_dilation(outline,iterations=1)
 
-    d = morph.binary_dilation(E1,iterations=1) & (~E1) #& (~nose_mask)
-    d = morph.binary_dilation(d,iterations=1)
-    img = inpaint.inpaint_biharmonic(img, d, multichannel=True)
-    img = np.clip((img*255).astype(np.uint8), 0, 255)
+    if not FLAG_DEBUG:
+        # Inpaint around the eyes one out and one in from the outer edge
+        img = inpaint.inpaint_biharmonic(img, outline, multichannel=True)
+        img = np.clip((img*255).astype(np.uint8), 0, 255)
     
-    # Draw back over the nose part a bit
-    #img[nose_mask] = org_img[nose_mask]
-    #cfilter = np.ones((7,7))
-    #nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
-    #img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
+        # Draw back over the nose part a bit
+        #img[nose_mask] = org_img[nose_mask]
+        #cfilter = np.ones((7,7))
+        #nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
+        #img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
 
-    if FLAG_DEBUG:
+    elif FLAG_DEBUG:
+        # Show the outline mask
+        img[outline] = [90,150,150,100]
+
         for key in ['top_lip', 'bottom_lip', 'right_eye', 'left_eye']:
             X = L[key]
-            img[X[:,1], X[:,0]] = [255,255,255,100]
+            img[X[:,1], X[:,0]] = [255,0,0,0]
 
     return img
 
@@ -261,37 +265,38 @@ def remove_eyes(L, f_img, f_out=None):
         
 
 def process_image(
-        f_img, f_out=None, save_landmarks=True,
+        f_img, f_out=None, save_landmarks=False, f_json=None,
 ):
 
     # Useful for debuging (start directly from an image)
     args = {}
-    
-    if save_landmarks:
+
+    if not f_json and save_landmarks:
         f_json = f_image_to_landmark_file(f_img)
-        
+
         if not os.path.exists(f_json):
             print "Building landmarks for", f_img
-            L = landmarks_from_image(f_img, save_data=True)
+
+            import find_landmarks_FAN as FAN
+            L = FAN.landmarks_from_image(f_img)
+            FAN.serialize_landmarks(f_json, L)
+
         else:
             L = read_landmarks(f_json)
-    else:
-        L = landmarks_from_image(f_img, save_data=False)
+
+    if f_json:
+        if not os.path.exists(f_json):
+            print "Building landmarks for", f_img
+
+            import find_landmarks_FAN as FAN
+            L = FAN.landmarks_from_image(f_img)
+            FAN.serialize_landmarks(f_json, L)
+            
+        else:
+            L = read_landmarks(f_json)
 
     remove_eyes(L, f_img, f_out)
 
-
-'''
-L = read_landmarks("data/hX25kn5x4Yg/landmarks/000012.jpg.json")
-f_img = "source/frames/hX25kn5x4Yg/000012.jpg"
-scale_product = 1.1
-FLAG_DEBUG = True
-FLAG_VIEW = False
-remove_eyes(L, f_img, "demo.jpg")
-
-print L
-exit()
-'''    
 
 if __name__ == "__main__":
     
@@ -304,8 +309,9 @@ if __name__ == "__main__":
     # If we are parsing a single image
     if not args['--URI']:
         FLAG_VIEW = True
-        #process_image(args["<f_image>"], save_landmarks=False)
-        process_image(args["<f_image>"], save_landmarks=True)
+        f_img = args["<f_image>"]
+        f_json = f_img+'_landmarks.json'
+        process_image(f_img, f_json=f_json)
 
     # If we are parsing a set of images
     if args['--URI']:
