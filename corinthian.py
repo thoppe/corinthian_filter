@@ -26,6 +26,7 @@ from shutil import copyfile
 from docopt import docopt
 import tempfile
 
+
 def f_image_to_landmark_file(f_image):
     dname = f_image.split('/')[-2]
     save_dest = os.path.join('data', dname, 'landmarks')
@@ -143,6 +144,15 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
 
     return export_mask
 
+
+def inpaint_mask(img, mask, method=cv2.INPAINT_TELEA):
+    tmp_img = img[:,:,:3]
+    tmp_img = cv2.inpaint(tmp_img,
+        mask.astype(np.uint8),3,method)
+
+    img[:,:,:3] = tmp_img
+    return img
+
 def blend_images_over_mask(img0, img1, mask, w=1.0):
 
     # Get the two subsets, cast as floats
@@ -181,7 +191,7 @@ def remove_eyes_from_landmarks(L, f_img):
     # Inpaint the whole eye area, dialated a few times
     if not FLAG_DEBUG:
         eye_mask = morph.binary_dilation(left_eye|right_eye,iterations=3)
-        img = inpaint.inpaint_biharmonic(img, eye_mask, multichannel=True)    
+        img = inpaint_mask(img, eye_mask)
 
     # Fill in the mouth a bit
     cfilter = np.ones((3,3))
@@ -215,8 +225,7 @@ def remove_eyes_from_landmarks(L, f_img):
 
     if not FLAG_DEBUG:
         # Inpaint around the eyes one out and one in from the outer edge
-        img = inpaint.inpaint_biharmonic(img, outline, multichannel=True)
-        img = np.clip((img*255).astype(np.uint8), 0, 255)
+        img = inpaint_mask(img, outline)
     
         # Draw back over the nose part a bit
         #img[nose_mask] = org_img[nose_mask]
