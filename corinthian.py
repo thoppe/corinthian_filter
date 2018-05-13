@@ -263,37 +263,23 @@ def remove_eyes(L, f_img, f_out=None):
     TMP.close()                
 
         
-
+    
 def process_image(
         f_img, f_out=None, save_landmarks=False, f_json=None,
 ):
 
-    # Useful for debuging (start directly from an image)
-    args = {}
-
-    if not f_json and save_landmarks:
+    if not f_json:
         f_json = f_image_to_landmark_file(f_img)
 
-        if not os.path.exists(f_json):
-            print "Building landmarks for", f_img
+    if not os.path.exists(f_json):
+        print "Building landmarks for", f_img
 
-            import find_landmarks_FAN as FAN
-            L = FAN.landmarks_from_image(f_img)
-            FAN.serialize_landmarks(f_json, L)
+        import find_landmarks_FAN as FAN
+        L = FAN.landmarks_from_image(f_img)
+        FAN.serialize_landmarks(f_json, L)
 
-        else:
-            L = read_landmarks(f_json)
-
-    if f_json:
-        if not os.path.exists(f_json):
-            print "Building landmarks for", f_img
-
-            import find_landmarks_FAN as FAN
-            L = FAN.landmarks_from_image(f_img)
-            FAN.serialize_landmarks(f_json, L)
-            
-        else:
-            L = read_landmarks(f_json)
+    else:
+        L = read_landmarks(f_json)
 
     remove_eyes(L, f_img, f_out)
 
