@@ -1,4 +1,4 @@
-target = "hX25kn5x4Yg"
+target = hX25kn5x4Yg
 
 all:
 	mkdir -p source
@@ -15,3 +15,6 @@ movie_corinthian:
 
 movie_no_sound_corinthian:
 	ffmpeg -thread_queue_size 512 -y -framerate 30 -i data/$(target)/corinthian/%06d.jpg -c:v libx264 -r 30 -pix_fmt yuv420p -crf 23 data/$(target)_corinthian.mp4
+
+test:
+	python corinthian.py problem_frames/005178.jpg

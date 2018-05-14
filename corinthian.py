@@ -1,14 +1,14 @@
 """Corinthian Filter
 
 Usage:
-  corinthian.py <location> --URI [--scale_product=<f>]
-  corinthian.py <f_image> [--debug] [--scale_product=<f>]
+  corinthian.py <location> --URI [--scale=<f>]
+  corinthian.py <f_image> [--debug] [--scale=<f>]
 
 Options:
   -h --help     Show this screen.
   --version     Show version.
   -d --debug       Debug mode
-  -s --scale_product=<f>  Amount to scale mouthes [default: 1.10]
+  -s --scale=<f>   Amount to scale mouthes [default: 0.60]
 """
 
 from __future__ import division
@@ -189,21 +189,20 @@ def remove_eyes_from_landmarks(L, f_img):
     
     # Fill the mouth in if it isn't too open
     mouth = morph.binary_fill_holes(mouth)
-
-    whole_face_pts = np.vstack([L[k] for k in L])
     mouth_pts = np.vstack([L[k] for k in mouth_keys])
 
     nose_pts = np.vstack([L[k] for k in ['nose_tip','nose_bridge']])
     nose_mask = get_mask(nose_pts, height, width)
-    face_mask = get_mask(whole_face_pts, height, width)
-    
-    mouth_to_face_ratio = np.sqrt(
-        bounding_box_area(mouth_pts) /
-        bounding_box_area(whole_face_pts) )
 
+    face_pts = L['all_points']
+    face_mask = get_mask(face_pts, height, width)
+    
+    #mouth_to_face_ratio = np.sqrt(
+    #    bounding_box_area(mouth_pts) /
+    #    bounding_box_area(face_pts) )
+    
     # Clip the ratio so the mouth-eyes don't get too small
-    mouth_to_face_ratio = np.clip(mouth_to_face_ratio, 0.5, 1.2)
-    scale_factor = scale_product*mouth_to_face_ratio
+    #mouth_to_face_ratio = np.clip(mouth_to_face_ratio, 0.5, 1.2)
         
     E0 = copy_mask(img, left_eye, mouth, scale_factor)
     E1 = copy_mask(img, right_eye, mouth, scale_factor)
@@ -276,16 +275,15 @@ def process_image(f_img, f_json, f_out=None):
         L = json.loads(FIN.read())
 
     remove_eyes(L, f_img, f_out)
-    #print f_out
-    #exit()
+
 
 if __name__ == "__main__":
     
     args = docopt(__doc__, version='corinthian 0.1')
-    
+
     FLAG_DEBUG = args["--debug"]
     FLAG_VIEW = False
-    scale_product = float(args["--scale_product"])
+    scale_factor = float(args["--scale"])
 
     # If we are parsing a single image
     if not args['--URI']:
@@ -325,7 +323,7 @@ if __name__ == "__main__":
         
         THREADS = -1
 
-        with joblib.Parallel(THREADS,batch_size=4) as MP:
+        with joblib.Parallel(THREADS,batch_size=10) as MP:
             func = joblib.delayed(process_image)
             MP(
                 func(f_img, f_json, f_out)

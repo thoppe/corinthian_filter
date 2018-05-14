@@ -9,23 +9,10 @@ Watch it in action: https://youtu.be/JPhnuYbPG1s
 ![Charlize Corinthinan Filter](docs/images/demo_image_charlize.jpg)
 ![E. Banks Filter](docs/images/demo_image_ebanks.jpg)
 
+With everything installed (good luck on that!), change the target in the Makefile to a valid youtube-URI and run `make corinthian`
 
 #### Developer Notes:
 
-**Pipeline:**
+Version 0.2
 
-Download a video, convert it into frames, find landmarks
-
-    youtube-dl https://www.youtube.com/watch?v=cVW6jBbD5Q8`
-    python extract_frames.py cVW6jBbD5Q8
-    python find_landmarks.py cVW6jBbD5Q8
-
-Begin the nightmare
-
-    python corinthian.py cVW6jBbD5Q8 --URI
-
-
-Known bugs:
-
-+ [ ] Sideways faces fill in wrong
-+ [ ] Some blending fails near noses
+If it's very slow, check that dlib uses CUDA properly.
