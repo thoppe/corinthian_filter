@@ -208,10 +208,10 @@ def remove_eyes_from_landmarks(L, f_img):
     E1 = copy_mask(img, right_eye, mouth, scale_factor)
 
     # Draw back over the nose part a bit
-    img[nose_mask] = org_img[nose_mask]
-    cfilter = np.ones((7,7))
-    nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
-    img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
+    #img[nose_mask] = org_img[nose_mask]
+    #cfilter = np.ones((7,7))
+    #nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
+    #img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
 
     d0 = morph.binary_dilation(E0,iterations=1)
     d1 = morph.binary_dilation(E1,iterations=1)
@@ -299,15 +299,13 @@ if __name__ == "__main__":
     # If we are parsing a set of images
     if args['--URI']:
 
-        landmark_loc = 'slandmarks'
-        
         loc = args['<location>']
         F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))
         
         # Preprocess everything first
         has_imported_FAN = False
         print "Computing Landmarks for {}".format(loc)
-        json_save_dest = os.path.join('data', loc, landmark_loc)
+        json_save_dest = os.path.join('data', loc, 'landmarks')
         os.system('mkdir -p {}'.format(json_save_dest))
         
         for f_img in tqdm(F_IMG):
@@ -321,6 +319,11 @@ if __name__ == "__main__":
 
                 L = FAN.landmarks_from_image(f_img)
                 FAN.serialize_landmarks(f_json, L)
+
+        # For now just call frame_stabilization.py
+        os.system('python frame_stabilization.py {}'.format(loc))
+        json_save_dest = os.path.join('data', loc, 'slandmarks')
+
 
         # Compute faces in parallel
         img_save_dest = "data/{}/corinthian/".format(loc)
