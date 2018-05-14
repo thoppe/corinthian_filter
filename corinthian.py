@@ -23,22 +23,8 @@ from shutil import copyfile
 from docopt import docopt
 
 
-def f_image_to_landmark_file(f_image):
-    dname = f_image.split('/')[-2]
-    save_dest = os.path.join('data', dname, 'landmarks')
-    os.system('mkdir -p {}'.format(save_dest))
+def f_image_to_landmark_file(f_image, save_dest):
     return os.path.join(save_dest, os.path.basename(f_image)) + '.json'
-
-
-
-def read_landmarks(f_json):
-    
-    assert( os.path.exists(f_json) )
-
-    with open(f_json, 'r') as FIN:
-        js = json.loads(FIN.read())
-
-    return js
 
 def get_mask(pts, height, width):
 
@@ -142,6 +128,8 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
 
 
 def inpaint_mask(img, mask, method=cv2.INPAINT_TELEA):
+    # Inpaint with cv2 (fast!), need to remove alpha channel because reasons
+    
     tmp_img = img[:,:,:3]
     tmp_img = cv2.inpaint(tmp_img,
         mask.astype(np.uint8),3,method)
@@ -243,7 +231,6 @@ def remove_eyes(L, f_img, f_out=None):
 
     # If output file exists, skip
     if f_out is not None and os.path.exists(f_out):
-        print "Skipping {}".format(f_out)
         return False
 
     TMP = tempfile.NamedTemporaryFile(suffix='.jpg')
@@ -253,7 +240,7 @@ def remove_eyes(L, f_img, f_out=None):
     copyfile(f_img, f_tmp)
     
     for k,faceL in enumerate(L):
-        print "Starting face {}, {}".format(k, f_img)
+        #print "Starting face {}, {}".format(k, f_img)
         img = remove_eyes_from_landmarks(faceL, f_tmp)
         cv2.imwrite(f_tmp, img)
         
@@ -269,12 +256,7 @@ def remove_eyes(L, f_img, f_out=None):
 
         
     
-def process_image(
-        f_img, f_out=None, save_landmarks=False, f_json=None,
-):
-
-    if not f_json:
-        f_json = f_image_to_landmark_file(f_img)
+def process_image(f_img, f_json, f_out=None):
 
     if not os.path.exists(f_json):
         print "Building landmarks for", f_img
@@ -283,8 +265,10 @@ def process_image(
         L = FAN.landmarks_from_image(f_img)
         FAN.serialize_landmarks(f_json, L)
 
-    else:
-        L = read_landmarks(f_json)
+    assert( os.path.exists(f_json) )
+
+    with open(f_json, 'r') as FIN:
+        L = json.loads(FIN.read())
 
     remove_eyes(L, f_img, f_out)
 
@@ -302,25 +286,40 @@ if __name__ == "__main__":
         FLAG_VIEW = True
         f_img = args["<f_image>"]
         f_json = f_img+'_landmarks.json'
-        process_image(f_img, f_json=f_json)
+        process_image(f_img, f_json)
 
     # If we are parsing a set of images
     if args['--URI']:
         loc = args['<location>']
-        F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))
+        F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))[:]
         
-        save_dest = "data/{}/corinthian/".format(loc)
-        os.system('mkdir -p {}'.format(save_dest))
+        # Preprocess everything first
+        has_imported_FAN = False
+        print "Computing Landmarks for {}".format(loc)
+        json_save_dest = os.path.join('data', loc, 'landmarks')
+        os.system('mkdir -p {}'.format(json_save_dest))
+        
+        for f_img in tqdm(F_IMG):
+            f_json = f_image_to_landmark_file(f_img, json_save_dest)
 
-        F_OUT = [os.path.join(save_dest, os.path.basename(f)) for f in F_IMG]
-    
-        if FLAG_DEBUG or FLAG_VIEW:
-            THREADS = 1
-        else:
-            THREADS = -1
+            if not os.path.exists(f_json):
 
-        THREADS = 1
+                if not has_imported_FAN:
+                    import find_landmarks_FAN as FAN
+                    has_imported_FAN = True
+
+                L = FAN.landmarks_from_image(f_img)
+                FAN.serialize_landmarks(f_json, L)
+
+        # Compute faces in parallel
+        img_save_dest = "data/{}/corinthian/".format(loc)
+        os.system('mkdir -p {}'.format(img_save_dest))
+        F_OUT  = [os.path.join(img_save_dest, os.path.basename(f)) for f in F_IMG]
+        F_JSON = [f_image_to_landmark_file(f, json_save_dest) for f in F_IMG]
+        
+        THREADS = -1
 
         with joblib.Parallel(THREADS,batch_size=4) as MP:
             func = joblib.delayed(process_image)
-            MP(func(f_img, f_out) for f_img, f_out in tqdm(zip(F_IMG, F_OUT)))
+            MP(func(f_img, f_json, f_out)
+               for f_img, f_json, f_out in tqdm(zip(F_IMG, F_JSON, F_OUT)))
