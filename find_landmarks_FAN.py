@@ -1,6 +1,7 @@
 import os, json
 import cv2
 import numpy as np
+from skimage import io
 
 # https://github.com/1adrianb/face-alignment
 import face_alignment
@@ -68,10 +69,9 @@ def locate_landmarks(img):
 def landmarks_from_image(f_img):
     
     # Load the image file into a numpy array
-    img = cv2.imread(f_img)
-    landmarks = locate_landmarks(img)
+    img = io.imread(f_img)
+    return locate_landmarks(img)
 
-    return landmarks
 
 def serialize_landmarks(f_json, L):
     
@@ -102,16 +102,16 @@ if __name__ == "__main__":
 
     # Single image test
     f = sys.argv[1]
-    img = cv2.imread(f)
-        
-    faces = fa.get_landmarks(f)
-    pts = faces[0].astype(np.int)
+    
+    faces = landmarks_from_image(f)
+    pts = faces[0]['all_points'].astype(np.int)
 
+    img = cv2.imread(f)
     h,w = img.shape[:2]
     idx = (pts[:,0]<w) & (pts[:,1]<h)   
     pts = pts[idx]
 
-    identify_landmarks(pts)    
+    identify_landmarks(pts)
     img[pts[:,1], pts[:,0]] = [255, 255, 255]
     
     show(img)
