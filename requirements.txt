@@ -4,8 +4,7 @@ scipy
 
 # DL/image libs
 opencv-python
-face_recognition
-scikit-image
+face_alignment
 
 # Helper libs
 tqdm

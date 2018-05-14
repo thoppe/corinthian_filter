@@ -4,10 +4,14 @@ import numpy as np
 
 # https://github.com/1adrianb/face-alignment
 import face_alignment
-#from face_alignment.utils import *
+
+### Monkey patch face detector so we can potentially upsample
+class face_alignment_upsample(face_alignment.FaceAlignment):
+    def detect_faces(self, image, n_upsample=1):
+        return self.face_detector(image, n_upsample)
 
 print "Loading face alignment"
-fa = face_alignment.FaceAlignment(
+fa = face_alignment_upsample(
     face_alignment.LandmarksType._2D,
     enable_cuda=True,
     enable_cudnn=True,
@@ -24,11 +28,6 @@ fa3D = face_alignment.FaceAlignment(
 )
 '''
 
-def f_image_to_landmark_file(f_image):
-    dname = f_image.split('/')[-2]
-    save_dest = os.path.join('data', dname, 'landmarks')
-    os.system('mkdir -p {}'.format(save_dest))
-    return os.path.join(save_dest, os.path.basename(f_image)) + '.json'
 
 def identify_landmarks(points):
     """
@@ -88,7 +87,7 @@ def serialize_landmarks(f_json, L):
     with open(f_json,'w') as FOUT:
         FOUT.write(js)
 
-    print "Saved {} faces to {}".format(len(L), f_json)
+    #print "Saved {} faces to {}".format(len(L), f_json)
 
 
 
@@ -101,14 +100,7 @@ if __name__ == "__main__":
     import sys, glob
     from tqdm import tqdm
 
-    
-    URI = sys.argv[1]
-    F_IMG = sorted(glob.glob("source/frames/{}/*".format(URI)))
-    for f_img in tqdm(F_IMG):
-        landmarks_from_image(f_img, save_data=True)
-    exit()
-    
-    
+    # Single image test
     f = sys.argv[1]
     img = cv2.imread(f)
         
@@ -119,8 +111,7 @@ if __name__ == "__main__":
     idx = (pts[:,0]<w) & (pts[:,1]<h)   
     pts = pts[idx]
 
-    identify_landmarks(pts)
-    
+    identify_landmarks(pts)    
     img[pts[:,1], pts[:,0]] = [255, 255, 255]
     
     show(img)
@@ -137,3 +128,8 @@ if __name__ == "__main__":
     for img in ITR:
         locate_landmarks(img)
 
+    # URI test
+    #URI = sys.argv[1]
+    #F_IMG = sorted(glob.glob("source/frames/{}/*".format(URI)))
+    #for f_img in tqdm(F_IMG):
+    #    landmarks_from_image(f_img, save_data=True)

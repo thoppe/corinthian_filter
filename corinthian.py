@@ -322,7 +322,9 @@ if __name__ == "__main__":
         # Compute faces in parallel
         img_save_dest = "data/{}/corinthian/".format(loc)
         os.system('mkdir -p {}'.format(img_save_dest))
-        F_OUT  = [os.path.join(img_save_dest, os.path.basename(f)) for f in F_IMG]
+        F_OUT  = [os.path.join(img_save_dest, os.path.basename(f))
+                  for f in F_IMG]
+        
         F_JSON = [f_image_to_landmark_file(f, json_save_dest) for f in F_IMG]
         
         THREADS = -1
