@@ -1,11 +1,17 @@
 target = hX25kn5x4Yg
 
 all:
-	mkdir -p source
-	youtube-dl $(target) -o source/$(target).mp4
-	python extract_frames.py $(target)
+	make pull
+	make extract
 	make corinthian
 	make movie_corinthian
+
+pull:
+	mkdir -p source
+	youtube-dl $(target) -o source/$(target).mp4
+
+extract:
+	python extract_frames.py $(target)
 
 corinthian:
 	python corinthian.py --URI $(target)
