@@ -54,17 +54,19 @@ def show(img):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def overlay(X, Y, x_offset, y_offset):
+def overlay(X, Y, offset):
     # https://stackoverflow.com/a/14102014/249341
     alpha_X = Y[:, :, 3] / 255.0
     alpha_Y = 1 - alpha_X
 
-    y1, y2 = y_offset, y_offset + Y.shape[0]
-    x1, x2 = x_offset, x_offset + Y.shape[1]
+    y1, y2 = offset[0], offset[0] + Y.shape[0]
+    x1, x2 = offset[1], offset[1] + Y.shape[1]
+
     
     for c in range(0, 3):
         X[y1:y2, x1:x2, c] = (alpha_Y * Y[:, :, c] +
                                 alpha_X * X[y1:y2, x1:x2, c])
+    
 
 def get_extent(pts):
     # Return the bounding box (y0,y1,x0,x1)
@@ -106,22 +108,22 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
     CMX = ptsX.mean(axis=1).astype(int)
 
     # Adjust so that the center of masses line up
-    y_offset, x_offset = np.clip(CM0 - CMX, 0, 10**20)
+    offset = np.clip(CM0 - CMX, 0, 10**20)
 
-    # Adjust the values in case they go off the screen
-    y_offset = min(y_offset, img.shape[0])
-    x_offset = min(x_offset, img.shape[1])
-    
+    # If the values go off the screen clip imgX
+    sy,sx,sc = imgX.shape
+    clip_val = np.clip((imgX.shape[:2] + offset) - img.shape[:2], 0, 10**10)
+    imgX = imgX[:sy-clip_val[0], :sx-clip_val[1], :]
 
     # Overlay the image and account of transparent background
-    overlay(img, imgX, x_offset, y_offset)
+    overlay(img, imgX, offset)
 
     padding = np.array([
-        [y_offset, img.shape[0]-imgX.shape[0]-y_offset],
-        [x_offset, img.shape[1]-imgX.shape[1]-x_offset],
+        [offset[0], img.shape[0]-imgX.shape[0]-offset[0]],
+        [offset[1], img.shape[1]-imgX.shape[1]-offset[1]],
     ])
 
-    export_mask = (imgX != TC).max(axis=2)
+    export_mask = (imgX != TC).max(axis=2)    
     export_mask = np.pad(export_mask, padding,  mode='constant')
 
     return export_mask
@@ -240,7 +242,6 @@ def remove_eyes(L, f_img, f_out=None):
     copyfile(f_img, f_tmp)
     
     for k,faceL in enumerate(L):
-        #print "Starting face {}, {}".format(k, f_img)
         img = remove_eyes_from_landmarks(faceL, f_tmp)
         cv2.imwrite(f_tmp, img)
         
@@ -271,7 +272,8 @@ def process_image(f_img, f_json, f_out=None):
         L = json.loads(FIN.read())
 
     remove_eyes(L, f_img, f_out)
-
+    #print f_out
+    #exit()
 
 if __name__ == "__main__":
     
@@ -321,5 +323,8 @@ if __name__ == "__main__":
 
         with joblib.Parallel(THREADS,batch_size=4) as MP:
             func = joblib.delayed(process_image)
-            MP(func(f_img, f_json, f_out)
-               for f_img, f_json, f_out in tqdm(zip(F_IMG, F_JSON, F_OUT)))
+            MP(
+                func(f_img, f_json, f_out)
+                for f_img, f_json, f_out in
+                tqdm(zip(F_IMG, F_JSON, F_OUT))
+            )
