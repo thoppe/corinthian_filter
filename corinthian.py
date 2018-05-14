@@ -202,10 +202,16 @@ def remove_eyes_from_landmarks(L, f_img):
     #    bounding_box_area(face_pts) )
     
     # Clip the ratio so the mouth-eyes don't get too small
-    #mouth_to_face_ratio = np.clip(mouth_to_face_ratio, 0.5, 1.2)
+    #mouth_to_face_ratio = np.clip(mouth_to_face_ratio, 0.5, 1.2)    
         
     E0 = copy_mask(img, left_eye, mouth, scale_factor)
     E1 = copy_mask(img, right_eye, mouth, scale_factor)
+
+    # Draw back over the nose part a bit
+    img[nose_mask] = org_img[nose_mask]
+    cfilter = np.ones((7,7))
+    nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
+    img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
 
     d0 = morph.binary_dilation(E0,iterations=1)
     d1 = morph.binary_dilation(E1,iterations=1)
@@ -216,19 +222,17 @@ def remove_eyes_from_landmarks(L, f_img):
         # Inpaint around the eyes one out and one in from the outer edge
         img = inpaint_mask(img, outline)
     
-        # Draw back over the nose part a bit
-        #img[nose_mask] = org_img[nose_mask]
-        #cfilter = np.ones((7,7))
-        #nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
-        #img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
-
     elif FLAG_DEBUG:
         # Show the outline mask
         img[outline] = [90,150,150,100]
 
+        img[L['all_points'][:,1], L['all_points'][:,0]] = [255,255,255,0]
+
         for key in ['top_lip', 'bottom_lip', 'right_eye', 'left_eye']:
             X = L[key]
             img[X[:,1], X[:,0]] = [255,0,0,0]
+
+            
 
     return img
 
