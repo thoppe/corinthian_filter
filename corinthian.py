@@ -298,13 +298,16 @@ if __name__ == "__main__":
 
     # If we are parsing a set of images
     if args['--URI']:
+
+        landmark_loc = 'slandmarks'
+        
         loc = args['<location>']
-        F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))[:]
+        F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))
         
         # Preprocess everything first
         has_imported_FAN = False
         print "Computing Landmarks for {}".format(loc)
-        json_save_dest = os.path.join('data', loc, 'landmarks')
+        json_save_dest = os.path.join('data', loc, landmark_loc)
         os.system('mkdir -p {}'.format(json_save_dest))
         
         for f_img in tqdm(F_IMG):

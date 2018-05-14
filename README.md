@@ -17,5 +17,5 @@ Version 0.2
 
 If it's very slow, check that dlib uses CUDA properly.
 
-+ [ ] Even using a CNN over a HOG, sometimes an obvious face isn't found (upsample?)
 + [ ] Motion stabilization with low-rank PCA over time-series should be possible
++ [ ] It looks like only a single face is found at once
