@@ -80,6 +80,10 @@ def bounding_box_area(pts):
     return (y1-y0)*(x1-x0)
 
 def copy_mask(img, mask0, mask1, resize_factor=1.5):
+    
+    if not mask0.sum():
+        print "Target mask empty, skipping copy"
+        return np.zeros([img.shape[0], img.shape[1]],dtype=bool)
 
     # Determine the dimensions of the target
     pts0 = np.array(np.where(mask0))
