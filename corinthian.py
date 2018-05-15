@@ -1,7 +1,7 @@
 """Corinthian Filter
 
 Usage:
-  corinthian.py <location> --URI [--scale=<f>]
+  corinthian.py <location> --URI [--scale=<f>] [--stable]
   corinthian.py <f_image> [--debug] [--scale=<f>]
 
 Options:
@@ -9,6 +9,7 @@ Options:
   --version     Show version.
   -d --debug       Debug mode
   -s --scale=<f>   Amount to scale mouthes [default: 0.60]
+  --stable         Apply stabilization to video
 """
 
 from __future__ import division
@@ -208,10 +209,10 @@ def remove_eyes_from_landmarks(L, f_img):
     E1 = copy_mask(img, right_eye, mouth, scale_factor)
 
     # Draw back over the nose part a bit
-    img[nose_mask] = org_img[nose_mask]
-    cfilter = np.ones((7,7))
-    nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
-    img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
+    #img[nose_mask] = org_img[nose_mask]
+    #cfilter = np.ones((7,7))
+    #nose_mask = convolve(nose_mask, cfilter).astype(np.bool)
+    #img[nose_mask] = blend_images_over_mask(img, org_img, nose_mask, 3.0)
 
     d0 = morph.binary_dilation(E0,iterations=1)
     d1 = morph.binary_dilation(E1,iterations=1)
@@ -298,10 +299,13 @@ if __name__ == "__main__":
 
     # If we are parsing a set of images
     if args['--URI']:
+
+        apply_stable = args['--stable']
+
         loc = args['<location>']
-        F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))[:]
+        F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))
         
-        # Preprocess everything first
+        # Preprocess landmarks first (can't be parallel)
         has_imported_FAN = False
         print "Computing Landmarks for {}".format(loc)
         json_save_dest = os.path.join('data', loc, 'landmarks')
@@ -319,6 +323,12 @@ if __name__ == "__main__":
                 L = FAN.landmarks_from_image(f_img)
                 FAN.serialize_landmarks(f_json, L)
 
+        # Call frame_stabilization.py if needed
+        if apply_stable:
+            print "Starting frame stabilization"
+            os.system('python frame_stabilization.py {}'.format(loc))
+            json_save_dest = os.path.join('data', loc, 'stable_landmarks')
+
         # Compute faces in parallel
         img_save_dest = "data/{}/corinthian/".format(loc)
         os.system('mkdir -p {}'.format(img_save_dest))
@@ -326,7 +336,6 @@ if __name__ == "__main__":
                   for f in F_IMG]
         
         F_JSON = [f_image_to_landmark_file(f, json_save_dest) for f in F_IMG]
-        
         THREADS = -1
 
         with joblib.Parallel(THREADS,batch_size=10) as MP:

@@ -56,7 +56,7 @@ def identify_landmarks(points):
 
 def locate_landmarks(img):
     
-    faces = fa.get_landmarks(img)
+    faces = fa.get_landmarks(img, all_faces=True)
     landmarks = []
 
     if faces:
@@ -104,15 +104,19 @@ if __name__ == "__main__":
     f = sys.argv[1]
     
     faces = landmarks_from_image(f)
-    pts = faces[0]['all_points'].astype(np.int)
+    print "Found {} faces".format(len(faces))
 
     img = cv2.imread(f)
     h,w = img.shape[:2]
-    idx = (pts[:,0]<w) & (pts[:,1]<h)   
-    pts = pts[idx]
+    
+    for face in faces:
+        pts = face['all_points'].astype(np.int)
 
-    identify_landmarks(pts)
-    img[pts[:,1], pts[:,0]] = [255, 255, 255]
+        idx = (pts[:,0]<w) & (pts[:,1]<h)   
+        pts = pts[idx]
+
+        identify_landmarks(pts)
+        img[pts[:,1], pts[:,0]] = [255, 255, 255]
     
     show(img)
     cv2.imwrite("demo.jpg", img)
