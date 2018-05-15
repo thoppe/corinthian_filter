@@ -15,8 +15,8 @@ def compute_frame_delta(URI):
     for f in tqdm(F_IMG):
         img = cv2.imread(f).astype(float)
         n = int(os.path.basename(f).split('.')[0])
-        
-        if k == 0:
+
+        if n == 1:
             prior_img = img
             continue
 
@@ -104,25 +104,7 @@ def low_rank_transform(pts):
 
     return tpts
 
-    '''
-    pts = org_pts
-    
-    import pylab as plt
-    plt.plot(pts[:,0,0],color='k')
-    plt.plot(pts[:,10,0],color='k')
-    plt.plot(pts[:,20,0],color='k')
-    plt.plot(pts[:,30,0],color='k')
-    plt.plot(pts[:,40,0],color='k')
 
-    plt.plot(tpts[:,0,0]) #pts[:,0,1])
-    plt.plot(tpts[:,10,0])# pts[:,10,1])
-    plt.plot(tpts[:,20,0])# pts[:,20,1])
-    plt.plot(tpts[:,30,0])# pts[:,30,1])
-    plt.plot(tpts[:,40,0])# pts[:,40,1])
-    plt.show()
-    '''
-
-  
 
 
 if __name__ == "__main__":
@@ -142,12 +124,12 @@ if __name__ == "__main__":
         df.to_csv(f_frame_delta)
 
 
-    os.system('mkdir -p data/{}/slandmarks'.format(URI))
+    os.system('mkdir -p data/{}/stable_landmarks'.format(URI))
     pts = []; f_jsons = []
 
     for i,row in tqdm(df.iterrows()):
         f = os.path.join("data/{}/landmarks/{:06d}.jpg.json".format(URI,i))
-        f2 = os.path.join("data/{}/slandmarks/{:06d}.jpg.json".format(URI,i))
+        f2 = os.path.join("data/{}/stable_landmarks/{:06d}.jpg.json".format(URI,i))
         shutil.copy(f, f2)
         
         if (row.n_faces != 1) | (row.mean_abs > _abs_mean_threshold):
@@ -178,7 +160,7 @@ if __name__ == "__main__":
     # Add in the final frame
     i = df.index.max() + 1
     f = os.path.join("data/{}/landmarks/{:06d}.jpg.json".format(URI,i))
-    f2 = os.path.join("data/{}/slandmarks/{:06d}.jpg.json".format(URI,i))
+    f2 = os.path.join("data/{}/stable_landmarks/{:06d}.jpg.json".format(URI,i))
     shutil.copy(f, f2)
 
     print f2

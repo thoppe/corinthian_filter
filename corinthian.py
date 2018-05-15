@@ -1,7 +1,7 @@
 """Corinthian Filter
 
 Usage:
-  corinthian.py <location> --URI [--scale=<f>]
+  corinthian.py <location> --URI [--scale=<f>] [--stable]
   corinthian.py <f_image> [--debug] [--scale=<f>]
 
 Options:
@@ -9,6 +9,7 @@ Options:
   --version     Show version.
   -d --debug       Debug mode
   -s --scale=<f>   Amount to scale mouthes [default: 0.60]
+  --stable         Apply stabilization to video
 """
 
 from __future__ import division
@@ -299,10 +300,12 @@ if __name__ == "__main__":
     # If we are parsing a set of images
     if args['--URI']:
 
+        apply_stable = args['--stable']
+
         loc = args['<location>']
         F_IMG = sorted(glob.glob("source/frames/{}/*".format(loc)))
         
-        # Preprocess everything first
+        # Preprocess landmarks first (can't be parallel)
         has_imported_FAN = False
         print "Computing Landmarks for {}".format(loc)
         json_save_dest = os.path.join('data', loc, 'landmarks')
@@ -320,10 +323,11 @@ if __name__ == "__main__":
                 L = FAN.landmarks_from_image(f_img)
                 FAN.serialize_landmarks(f_json, L)
 
-        # For now just call frame_stabilization.py
-        os.system('python frame_stabilization.py {}'.format(loc))
-        json_save_dest = os.path.join('data', loc, 'slandmarks')
-
+        # Call frame_stabilization.py if needed
+        if apply_stable:
+            print "Starting frame stabilization"
+            os.system('python frame_stabilization.py {}'.format(loc))
+            json_save_dest = os.path.join('data', loc, 'stable_landmarks')
 
         # Compute faces in parallel
         img_save_dest = "data/{}/corinthian/".format(loc)
@@ -332,7 +336,6 @@ if __name__ == "__main__":
                   for f in F_IMG]
         
         F_JSON = [f_image_to_landmark_file(f, json_save_dest) for f in F_IMG]
-        
         THREADS = -1
 
         with joblib.Parallel(THREADS,batch_size=10) as MP:
