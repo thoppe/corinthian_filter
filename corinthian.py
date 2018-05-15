@@ -22,7 +22,10 @@ from scipy.ndimage.filters import convolve
 import scipy.ndimage.morphology as morph
 from shutil import copyfile
 from docopt import docopt
+from frame_stabilization import face_residuals
 
+FACE_RESIDUALS = face_residuals()
+_max_face_residual = 5.0
 
 def f_image_to_landmark_file(f_image, save_dest):
     return os.path.join(save_dest, os.path.basename(f_image)) + '.json'
@@ -231,11 +234,10 @@ def remove_eyes_from_landmarks(L, f_img):
 
         for key in ['top_lip', 'bottom_lip', 'right_eye', 'left_eye']:
             X = L[key]
-            img[X[:,1], X[:,0]] = [255,0,0,0]
-
-            
+            img[X[:,1], X[:,0]] = [255,0,0,0]            
 
     return img
+
 
 def remove_eyes(L, f_img, f_out=None):
 
@@ -249,7 +251,10 @@ def remove_eyes(L, f_img, f_out=None):
     # Create a copy, needed for multiple faces
     copyfile(f_img, f_tmp)
     
-    for k,faceL in enumerate(L):
+    for faceL in L:
+        if FACE_RESIDUALS(faceL['all_points']) > _max_face_residual:
+            continue
+        
         img = remove_eyes_from_landmarks(faceL, f_tmp)
         cv2.imwrite(f_tmp, img)
         

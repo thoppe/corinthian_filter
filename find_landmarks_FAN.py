@@ -2,6 +2,7 @@ import os, json
 import cv2
 import numpy as np
 from skimage import io
+from frame_stabilization import face_residuals
 
 # https://github.com/1adrianb/face-alignment
 import face_alignment
@@ -108,6 +109,8 @@ if __name__ == "__main__":
 
     img = cv2.imread(f)
     h,w = img.shape[:2]
+
+    F_EVAL = face_residuals()
     
     for face in faces:
         pts = face['all_points'].astype(np.int)
@@ -116,7 +119,13 @@ if __name__ == "__main__":
         pts = pts[idx]
 
         identify_landmarks(pts)
-        img[pts[:,1], pts[:,0]] = [255, 255, 255]
+        is_valid = F_EVAL(pts) < 5
+        
+        if is_valid:
+            img[pts[:,1], pts[:,0]] = [255, 255, 255]
+        else:
+            img[pts[:,1], pts[:,0]] = [255, 0, 0]
+            
     
     show(img)
     cv2.imwrite("demo.jpg", img)
