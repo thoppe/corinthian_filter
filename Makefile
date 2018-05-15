@@ -1,4 +1,4 @@
-target = hX25kn5x4Yg
+target = qAEM95ixp-s
 
 all:
 	make pull
