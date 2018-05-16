@@ -18,10 +18,11 @@ import numpy as np
 import cv2
 import joblib
 from tqdm import tqdm
-from scipy.ndimage.filters import convolve
+#from scipy.ndimage.filters import convolve
 import scipy.ndimage.morphology as morph
 from shutil import copyfile
 from docopt import docopt
+import imutils
 from frame_stabilization import face_residuals
 
 FACE_RESIDUALS = face_residuals()
@@ -59,13 +60,19 @@ def show(img):
     cv2.destroyAllWindows()
 
 def overlay(X, Y, offset):
+
+    print X.shape
+    print Y.shape
+
+    
+    exit()
+    
     # https://stackoverflow.com/a/14102014/249341
     alpha_X = Y[:, :, 3] / 255.0
     alpha_Y = 1 - alpha_X
 
     y1, y2 = offset[0], offset[0] + Y.shape[0]
     x1, x2 = offset[1], offset[1] + Y.shape[1]
-
     
     for c in range(0, 3):
         X[y1:y2, x1:x2, c] = (alpha_Y * Y[:, :, c] +
@@ -94,37 +101,63 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
     CM0 = pts0.mean(axis=1).astype(int)
 
     if FLAG_DEBUG:
-        img[mask0] = [250,250,250,0]
-        img[mask1] = [0,150,150,100]
-        img[CM0[0], CM0[1]] = [250,0,50,0]
+        img[mask0] = [250,250,250]
+        img[mask1] = [0,150,150]
+        img[CM0[0], CM0[1]] = [250,0,50]
 
     # Extract a fresh copy of the source mask
     pts1 = np.array(np.where(mask1))
     y0,y1,x0,x1 = get_extent(pts1)
     imgX = img[y0:y1,x0:x1].copy()
 
+    
     # On the mask, apply a transparent filter
-    TC = np.array([0,0,0,255])
-    imgX[~mask1[y0:y1,x0:x1]] = TC
+    #TC = np.array([255,255,255])
+    #imgX[~mask1[y0:y1,x0:x1]] = TC
 
     if FLAG_DEBUG:
-        imgX[mask1[y0:y1,x0:x1]] = [50,50,50,50]
-
+        imgX[mask1[y0:y1,x0:x1]] = [50,50,50]
+    
     # Resize the target image
-    imgX = cv2.resize(imgX, None, fx=resize_factor, fy=resize_factor)
-    ptsX = np.array(np.where(imgX!=[0,0,0,0]))[:2]
-    CMX = ptsX.mean(axis=1).astype(int)
+    imgX = cv2.resize(imgX, None, fx=resize_factor, fy=resize_factor,
+                      interpolation=cv2.INTER_AREA)
+
+    imgX = imutils.rotate_bound(imgX, -20)
+    idx = np.where((imgX==[0,0,0]).all(axis=2))
+    imgX[idx]= avg_color
+    
+
+    show(imgX)
+    exit()
+    #show(imutils.rotate(imgX, -20))
+    #exit()
+    
+    #ptsX = np.array(np.where(imgX!=[255,255,255,0]))[:2]
+    #CMX = ptsX.mean(axis=1).astype(int)
 
     # Adjust so that the center of masses line up
-    offset = np.clip(CM0 - CMX, 0, 10**20)
+    #offset = np.clip(CM0 - CMX, 0, 10**20)
 
     # If the values go off the screen clip imgX
-    sy,sx,sc = imgX.shape
-    clip_val = np.clip((imgX.shape[:2] + offset) - img.shape[:2], 0, 10**10)
-    imgX = imgX[:sy-clip_val[0], :sx-clip_val[1], :]
+    #sy,sx,sc = imgX.shape
+    #clip_val = np.clip((imgX.shape[:2] + offset) - img.shape[:2], 0, 10**10)
+    #imgX = imgX[:sy-clip_val[0], :sx-clip_val[1], :]
 
     # Overlay the image and account of transparent background
-    overlay(img, imgX, offset)
+    #overlay(img, imgX, offset)
+
+    mask = 255 * np.ones(imgX.shape, imgX.dtype)    
+    offset = tuple(CM0)[::-1]
+
+    #img = cv2.seamlessClone(imgX, img, mask, offset, cv2.NORMAL_CLONE)
+    img = cv2.seamlessClone(imgX, img, mask, offset, cv2.MIXED_CLONE)
+    #img = cv2.seamlessClone(imgX, img, mask, offset, cv2.FEATURE_EXCHANGE)
+
+    return img
+
+    '''
+    show(img)
+    #exit()
 
     padding = np.array([
         [offset[0], img.shape[0]-imgX.shape[0]-offset[0]],
@@ -135,27 +168,25 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
     export_mask = np.pad(export_mask, padding,  mode='constant')
 
     return export_mask
-
+    '''
 
 def inpaint_mask(img, mask, method=cv2.INPAINT_TELEA):
-    # Inpaint with cv2 (fast!), need to remove alpha channel because reasons
+    # Inpaint with cv2 (fast!)
     
-    tmp_img = img[:,:,:3]
-    tmp_img = cv2.inpaint(tmp_img,
-        mask.astype(np.uint8),3,method)
+    return cv2.inpaint(img,
+        mask.astype(np.uint8), 10, method)
 
-    img[:,:,:3] = tmp_img
-    return img
+def compute_pt_slope(pts):
+    idx0 = np.argmin(pts[:,1])
+    idx1 = np.argmax(pts[:,1])
 
-def blend_images_over_mask(img0, img1, mask, w=1.0):
+    r0 = pts[idx0].astype(float)
+    r1 = pts[idx1].astype(float)
+    r0 /= np.linalg.norm(r0)
+    r1 /= np.linalg.norm(r1)
 
-    # Get the two subsets, cast as floats
-    f0 = img0[mask].astype(float)
-    f1 = img1[mask].astype(float)
-
-    f10 = (1.0*f0+w*f1)/(1+w)
-
-    return f10.astype(np.uint8)
+    print np.arccos(np.dot(r0, r1))
+    
 
 
 def remove_eyes_from_landmarks(L, f_img):
@@ -168,10 +199,10 @@ def remove_eyes_from_landmarks(L, f_img):
     img = cv2.imread(f_img)
 
     # Convert JPG into PNG with alpha channel
-    bc, gc, rc = cv2.split(img)
-    ac = np.ones(bc.shape, dtype=bc.dtype) * 0
-    img = cv2.merge((bc,gc,rc,ac))
-    org_img = img.copy()
+    #bc, gc, rc = cv2.split(img)
+    #ac = np.ones(bc.shape, dtype=bc.dtype) * 0
+    #img = cv2.merge((bc,gc,rc,ac))
+    #org_img = img.copy()
         
     height, width, _ = img.shape
 
@@ -183,13 +214,15 @@ def remove_eyes_from_landmarks(L, f_img):
     mouth = np.array(masks).astype(int).sum(axis=0)
 
     # Inpaint the whole eye area, dialated a few times
-    if not FLAG_DEBUG:
-        eye_mask = morph.binary_dilation(left_eye|right_eye,iterations=3)
-        img = inpaint_mask(img, eye_mask)
+    avg_eye_area = (left_eye.sum() + right_eye.sum())/2
+    itr = int(0.5*np.sqrt(avg_eye_area))
 
+    if not FLAG_DEBUG:
+        eye_mask = morph.binary_dilation(left_eye|right_eye,iterations=itr)
+        img = inpaint_mask(img, eye_mask, )
+        
     # Fill in the mouth a bit
-    cfilter = np.ones((3,3))
-    mouth = convolve(mouth, cfilter).astype(np.bool)
+    mouth  = morph.binary_dilation(mouth, iterations=itr)
     
     # Fill the mouth in if it isn't too open
     mouth = morph.binary_fill_holes(mouth)
@@ -208,8 +241,17 @@ def remove_eyes_from_landmarks(L, f_img):
     # Clip the ratio so the mouth-eyes don't get too small
     #mouth_to_face_ratio = np.clip(mouth_to_face_ratio, 0.5, 1.2)    
         
-    E0 = copy_mask(img, left_eye, mouth, scale_factor)
-    E1 = copy_mask(img, right_eye, mouth, scale_factor)
+    img = copy_mask(img, left_eye, mouth, scale_factor)
+    img = copy_mask(img, right_eye, mouth, scale_factor)
+
+    for key in ['top_lip', 'bottom_lip', 'right_eye', 'left_eye']:
+            X = L[key]
+            img[X[:,1], X[:,0]] = [255,255,255]
+
+            print key, compute_pt_slope(L[key])
+    #exit()
+    show(img)
+    exit()
 
     # Draw back over the nose part a bit
     #img[nose_mask] = org_img[nose_mask]
