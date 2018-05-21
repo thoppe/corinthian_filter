@@ -23,6 +23,7 @@ import scipy.ndimage.morphology as morph
 from shutil import copyfile
 from docopt import docopt
 import imutils
+from sklearn.cluster import KMeans
 from frame_stabilization import face_residuals
 
 FACE_RESIDUALS = face_residuals()
@@ -60,12 +61,6 @@ def show(img):
     cv2.destroyAllWindows()
 
 def overlay(X, Y, offset):
-
-    print X.shape
-    print Y.shape
-
-    
-    exit()
     
     # https://stackoverflow.com/a/14102014/249341
     alpha_X = Y[:, :, 3] / 255.0
@@ -110,71 +105,37 @@ def copy_mask(img, mask0, mask1, resize_factor=1.5):
     y0,y1,x0,x1 = get_extent(pts1)
     imgX = img[y0:y1,x0:x1].copy()
 
-    
-    # On the mask, apply a transparent filter
-    #TC = np.array([255,255,255])
-    #imgX[~mask1[y0:y1,x0:x1]] = TC
-
     if FLAG_DEBUG:
         imgX[mask1[y0:y1,x0:x1]] = [50,50,50]
+
+    maskX = np.zeros_like(imgX)
+    maskX[mask1[y0:y1,x0:x1]] = [255,255,255]
     
     # Resize the target image
     imgX = cv2.resize(imgX, None, fx=resize_factor, fy=resize_factor,
                       interpolation=cv2.INTER_AREA)
+    maskX = cv2.resize(maskX, None, fx=resize_factor, fy=resize_factor,
+                       interpolation=cv2.INTER_AREA)
 
-    imgX = imutils.rotate_bound(imgX, -20)
-    idx = np.where((imgX==[0,0,0]).all(axis=2))
-    imgX[idx]= avg_color
+    # Try rotating?
+    #imgX = imutils.rotate_bound(imgX, -20)
+    #idx = np.where((imgX==[0,0,0]).all(axis=2))
+    #imgX[idx]= avg_color
     
-
-    show(imgX)
-    exit()
-    #show(imutils.rotate(imgX, -20))
-    #exit()
-    
-    #ptsX = np.array(np.where(imgX!=[255,255,255,0]))[:2]
-    #CMX = ptsX.mean(axis=1).astype(int)
-
-    # Adjust so that the center of masses line up
-    #offset = np.clip(CM0 - CMX, 0, 10**20)
-
-    # If the values go off the screen clip imgX
-    #sy,sx,sc = imgX.shape
-    #clip_val = np.clip((imgX.shape[:2] + offset) - img.shape[:2], 0, 10**10)
-    #imgX = imgX[:sy-clip_val[0], :sx-clip_val[1], :]
-
-    # Overlay the image and account of transparent background
-    #overlay(img, imgX, offset)
-
     mask = 255 * np.ones(imgX.shape, imgX.dtype)    
     offset = tuple(CM0)[::-1]
 
-    #img = cv2.seamlessClone(imgX, img, mask, offset, cv2.NORMAL_CLONE)
     img = cv2.seamlessClone(imgX, img, mask, offset, cv2.MIXED_CLONE)
-    #img = cv2.seamlessClone(imgX, img, mask, offset, cv2.FEATURE_EXCHANGE)
+    img = cv2.seamlessClone(imgX, img, maskX, offset, cv2.NORMAL_CLONE)
 
     return img
 
-    '''
-    show(img)
-    #exit()
-
-    padding = np.array([
-        [offset[0], img.shape[0]-imgX.shape[0]-offset[0]],
-        [offset[1], img.shape[1]-imgX.shape[1]-offset[1]],
-    ])
-
-    export_mask = (imgX != TC).max(axis=2)    
-    export_mask = np.pad(export_mask, padding,  mode='constant')
-
-    return export_mask
-    '''
 
 def inpaint_mask(img, mask, method=cv2.INPAINT_TELEA):
     # Inpaint with cv2 (fast!)
     
     return cv2.inpaint(img,
-        mask.astype(np.uint8), 10, method)
+        mask.astype(np.uint8), 15, method)
 
 def compute_pt_slope(pts):
     idx0 = np.argmin(pts[:,1])
@@ -185,7 +146,7 @@ def compute_pt_slope(pts):
     r0 /= np.linalg.norm(r0)
     r1 /= np.linalg.norm(r1)
 
-    print np.arccos(np.dot(r0, r1))
+    return np.arccos(np.dot(r0, r1))
     
 
 
@@ -197,12 +158,8 @@ def remove_eyes_from_landmarks(L, f_img):
     
     assert(os.path.exists(f_img))
     img = cv2.imread(f_img)
+    org_img = img.copy()
 
-    # Convert JPG into PNG with alpha channel
-    #bc, gc, rc = cv2.split(img)
-    #ac = np.ones(bc.shape, dtype=bc.dtype) * 0
-    #img = cv2.merge((bc,gc,rc,ac))
-    #org_img = img.copy()
         
     height, width, _ = img.shape
 
@@ -215,11 +172,35 @@ def remove_eyes_from_landmarks(L, f_img):
 
     # Inpaint the whole eye area, dialated a few times
     avg_eye_area = (left_eye.sum() + right_eye.sum())/2
-    itr = int(0.5*np.sqrt(avg_eye_area))
+    itr = int(0.25*np.sqrt(avg_eye_area))
 
+    eye_mask = morph.binary_dilation(left_eye|right_eye,iterations=1)
+
+    # Find the whites of the eyes! Do in HSV
+    
     if not FLAG_DEBUG:
-        eye_mask = morph.binary_dilation(left_eye|right_eye,iterations=itr)
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        blur_img = cv2.GaussianBlur(hsv, (5,5), 10)
+        eyes = blur_img[eye_mask]
+
+        n_clusters = 4
+        clf = KMeans(n_clusters=n_clusters)
+        clf.fit(eyes)
+
+        centroids = np.array([
+            np.mean(eyes[clf.labels_==i],axis=0) for i in range(n_clusters)])
+
+        eye_white_idx_label = np.argmin(centroids[:,1])
+
+        # With the whites of the eyes, blur a bit more!
+        expanded_eye_mask = morph.binary_dilation(eye_mask,iterations=itr)
+        labels = clf.predict(blur_img[expanded_eye_mask])
+
+        idx_x, idx_y = np.where(expanded_eye_mask)
+        eye_mask[idx_x[labels==i], idx_y[labels==i]] = True
+        eye_mask = morph.binary_dilation(eye_mask,iterations=4)
         img = inpaint_mask(img, eye_mask, )
+
         
     # Fill in the mouth a bit
     mouth  = morph.binary_dilation(mouth, iterations=itr)
@@ -240,16 +221,21 @@ def remove_eyes_from_landmarks(L, f_img):
     
     # Clip the ratio so the mouth-eyes don't get too small
     #mouth_to_face_ratio = np.clip(mouth_to_face_ratio, 0.5, 1.2)    
-        
-    img = copy_mask(img, left_eye, mouth, scale_factor)
-    img = copy_mask(img, right_eye, mouth, scale_factor)
 
+    for n in range(1):
+        img = copy_mask(img, left_eye, mouth, scale_factor)
+        img = copy_mask(img, right_eye, mouth, scale_factor)
+
+    
+
+    # Drop points
+    img[L['all_points'][:,1], L['all_points'][:,0]] = [0,255,0]
     for key in ['top_lip', 'bottom_lip', 'right_eye', 'left_eye']:
             X = L[key]
             img[X[:,1], X[:,0]] = [255,255,255]
 
             print key, compute_pt_slope(L[key])
-    #exit()
+
     show(img)
     exit()
 
